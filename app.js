@@ -1,16 +1,7 @@
-const STATIONS = [
-  { name: 'Europa Plus', url: 'https://stream.euroradio.lv/ep1.mp3', genre: 'Pop' },
-  { name: 'Jazz FM', url: 'https://jazz-am.streamguys1.com/live', genre: 'Jazz' },
-  { name: 'Classic Rock Florida', url: 'https://ais-sa1.streamon.fm/7124_48k.aac', genre: 'Rock' },
-  { name: 'Deep House City', url: 'https://hydra.shoutcast.com/media?genre=deep+house', genre: 'Electronic' },
-  { name: 'Radio Record', url: 'https://radiorecord.hostingradio.ru/record.mp3', genre: 'Electronic' },
-  { name: 'DFM', url: 'https://dfm.dropcatch.com/DVQAAC6H/best', genre: 'Dance' },
-  { name: 'Kiss FM', url: 'https://www.kissfm.ro/kissfm/digital/kissfm.mp3', genre: 'Pop' },
-  { name: 'Lofi Hip Hop', url: 'https://streams.illfacto.com/lofi', genre: 'Lo-Fi' },
-  { name: 'Chillhop Radio', url: 'https://stream.zeno.fm/0r0xa792kwzuv', genre: 'Chill' },
-  { name: 'Classical KUSC', url: 'https://kusc.streamguys1.com/kusc-128k', genre: 'Classical' },
-];
+const CORS_PROXY = 'https://corsproxy.io/?';
+const API_URL = 'https://de1.api.radio-browser.info/json/stations/topvote/50?hidebroken=true';
 
+let stations = [];
 let currentStation = -1;
 let isPlaying = false;
 let isRecording = false;
@@ -19,7 +10,6 @@ let recordingStartTime = null;
 let audio = new Audio();
 let mediaRecorder = null;
 let audioChunks = [];
-let recordedStream = null;
 let searchQuery = '';
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -43,6 +33,7 @@ const emptyRecordings = document.getElementById('emptyRecordings');
 const searchInput = document.getElementById('searchInput');
 const toast = document.getElementById('toast');
 
+audio.crossOrigin = 'anonymous';
 audio.volume = volumeSlider.value / 100;
 
 audio.addEventListener('playing', () => {
@@ -55,11 +46,30 @@ audio.addEventListener('pause', () => {
   updatePlayerUI();
 });
 
-audio.addEventListener('error', () => {
-  showToast('Ошибка воспроизведения');
-  isPlaying = false;
-  updatePlayerUI();
+audio.addEventListener('error', (e) => {
+  if (currentStation >= 0) {
+    showToast('Ошибка соединения, пробую другой сервер...');
+    tryNextProxy();
+  }
 });
+
+function tryNextProxy() {
+  if (currentStation < 0) return;
+  const s = stations[currentStation];
+  if (!s._proxyAttempt) s._proxyAttempt = 0;
+  s._proxyAttempt++;
+
+  if (s._proxyAttempt === 1) {
+    audio.src = CORS_PROXY + encodeURIComponent(s.url_resolved);
+  } else if (s._proxyAttempt === 2) {
+    audio.src = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(s.url_resolved);
+  } else {
+    showToast('Станция недоступна');
+    s._proxyAttempt = 0;
+    return;
+  }
+  audio.play().catch(() => {});
+}
 
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
@@ -80,20 +90,59 @@ searchInput.addEventListener('input', (e) => {
   renderStations();
 });
 
+async function loadStations() {
+  stationsList.innerHTML = '<div class="empty-state"><p>Загрузка станций...</p></div>';
+
+  try {
+    const resp = await fetch(API_URL);
+    const data = await resp.json();
+    stations = data
+      .filter(s => s.url_resolved && (s.codec === 'MP3' || s.codec === 'AAC' || s.codec === 'OGG' || s.codec === 'AAC+'))
+      .map(s => ({
+        name: s.name,
+        url: s.url_resolved,
+        genre: s.tags ? s.tags.split(',').slice(0, 2).join(', ') : s.countrycode,
+        country: s.countrycode,
+        codec: s.codec,
+        bitrate: s.bitrate,
+        favicon: s.favicon,
+        _proxyAttempt: 0,
+      }))
+      .slice(0, 30);
+  } catch (e) {
+    stations = getFallbackStations();
+  }
+
+  renderStations();
+}
+
+function getFallbackStations() {
+  return [
+    { name: 'Europa Plus LV', url: 'https://stream.euroradio.lv/ep1.mp3', genre: 'Pop', country: 'LV', codec: 'MP3', bitrate: 128 },
+    { name: 'Radio Record', url: 'https://radiorecord.hostingradio.ru/record.mp3', genre: 'Electronic', country: 'RU', codec: 'MP3', bitrate: 192 },
+    { name: 'Lofi Hip Hop', url: 'https://streams.illfacto.com/lofi', genre: 'Lo-Fi', country: 'US', codec: 'MP3', bitrate: 128 },
+    { name: 'Classic Rock FL', url: 'https://ais-sa1.streamon.fm/7124_48k.aac', genre: 'Rock', country: 'US', codec: 'AAC', bitrate: 48 },
+    { name: 'Kiss FM RO', url: 'https://www.kissfm.ro/kissfm/digital/kissfm.mp3', genre: 'Pop', country: 'RO', codec: 'MP3', bitrate: 128 },
+  ];
+}
+
 function getFilteredStations() {
-  if (!searchQuery) return STATIONS.map((s, i) => ({ ...s, index: i }));
-  return STATIONS.map((s, i) => ({ ...s, index: i }))
+  if (!searchQuery) return stations.map((s, i) => ({ ...s, index: i }));
+  return stations.map((s, i) => ({ ...s, index: i }))
     .filter(s => s.name.toLowerCase().includes(searchQuery) || s.genre.toLowerCase().includes(searchQuery));
 }
 
 function renderStations() {
   const filtered = getFilteredStations();
+
+  if (filtered.length === 0 && stations.length === 0) return;
+
   stationsList.innerHTML = filtered.map(s => `
     <div class="station-card ${currentStation === s.index ? 'current' : ''}" data-index="${s.index}">
       <div class="station-card-icon">${s.name.substring(0, 2).toUpperCase()}</div>
       <div class="station-card-info">
-        <div class="station-card-name">${s.name}</div>
-        <div class="station-card-genre">${s.genre}</div>
+        <div class="station-card-name">${escapeHtml(s.name)}</div>
+        <div class="station-card-genre">${escapeHtml(s.genre || '')} ${s.bitrate ? s.bitrate + ' kbps' : ''}</div>
       </div>
       <div class="station-card-action">
         ${currentStation === s.index && isPlaying
@@ -107,6 +156,12 @@ function renderStations() {
   stationsList.querySelectorAll('.station-card').forEach(card => {
     card.addEventListener('click', () => playStation(parseInt(card.dataset.index)));
   });
+}
+
+function escapeHtml(text) {
+  const d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
 }
 
 async function playStation(index) {
@@ -125,17 +180,18 @@ async function playStation(index) {
     return;
   }
 
-  try {
-    if (audioCtx.state === 'suspended') await audioCtx.state;
+  currentStation = index;
+  stations[index]._proxyAttempt = 0;
 
-    currentStation = index;
-    audio.src = STATIONS[index].url;
+  try {
+    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    audio.src = stations[index].url;
     await audio.play();
     playerBar.classList.add('active');
     updatePlayerUI();
     renderStations();
   } catch (e) {
-    showToast('Ошибка: ' + e.message);
+    tryNextProxy();
   }
 }
 
@@ -150,8 +206,8 @@ function togglePlay() {
 
 function updatePlayerUI() {
   if (currentStation >= 0) {
-    stationName.textContent = STATIONS[currentStation].name;
-    stationGenre.textContent = STATIONS[currentStation].genre;
+    stationName.textContent = stations[currentStation].name;
+    stationGenre.textContent = stations[currentStation].genre || '';
     playBtn.disabled = false;
     recordBtn.disabled = false;
   }
@@ -205,7 +261,7 @@ async function startRecording() {
 
     mediaRecorder.onstop = async () => {
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-      const stationName_ = STATIONS[currentStation]?.name || 'Unknown';
+      const stationName_ = stations[currentStation]?.name || 'Unknown';
       await saveRecording(blob, stationName_);
       showToast('Запись сохранена');
       renderRecordings();
@@ -365,7 +421,7 @@ async function renderRecordings() {
         <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
       </div>
       <div class="recording-card-info">
-        <div class="recording-card-name">${rec.station}</div>
+        <div class="recording-card-name">${escapeHtml(rec.station)}</div>
         <div class="recording-card-meta">${formatDate(rec.date)} | ${formatDuration(rec.duration)} | ${formatSize(rec.size)}</div>
       </div>
       <div class="recording-card-actions">
@@ -402,5 +458,5 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-renderStations();
+loadStations();
 renderRecordings();
