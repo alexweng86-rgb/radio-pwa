@@ -59,9 +59,13 @@ const toast = document.getElementById('toast');
 const bufferInfo = document.getElementById('bufferInfo');
 const bufferBarFill = document.getElementById('bufferBarFill');
 const bufferText = document.getElementById('bufferText');
+const nowPlaying = document.getElementById('nowPlaying');
+const npTrack = document.getElementById('npTrack');
 
 const TARGET_BUFFER = 60;
 const MIN_BUFFER_TO_PLAY = 2;
+let metadataAbort = null;
+let metadataTimer = null;
 
 audio.crossOrigin = 'anonymous';
 audio.preload = 'auto';
@@ -113,6 +117,7 @@ function tryNextProxy() {
     return;
   }
   audio.play().catch(() => {});
+  startMetadataReader();
 }
 
 function updateBufferInfo() {
@@ -156,6 +161,191 @@ function stopBufferMonitor() {
   }
 }
 
+function startMetadataReader() {
+  stopMetadataReader();
+  if (currentStation < 0) return;
+
+  const url = STATIONS[currentStation].url;
+  const proxiedUrl = CORS_PROXY + encodeURIComponent(url);
+
+  metadataAbort = new AbortController();
+
+  fetch(proxiedUrl, {
+    signal: metadataAbort.signal,
+    headers: { 'icy-metadata': '1' }
+  }).then(async resp => {
+    const icyMetaInt = parseInt(resp.headers.get('icy-metaint'));
+    if (!icyMetaInt) {
+      tryAltMetadata();
+      return;
+    }
+
+    const reader = resp.body.getReader();
+    let bytesUntilMeta = icyMetaInt;
+    let buffer = new Uint8Array(0);
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+
+      let pos = 0;
+      while (pos < value.length) {
+        const chunk = value.slice(pos, Math.min(pos + bytesUntilMeta, value.length));
+        buffer = concatUint8(buffer, chunk);
+        pos += chunk.length;
+        bytesUntilMeta -= chunk.length;
+
+        if (bytesUntilMeta === 0) {
+          const metaLen = value[pos] * 16;
+          pos++;
+          if (metaLen > 0 && pos + metaLen <= value.length) {
+            const metaStr = new TextDecoder('utf-8').decode(value.slice(pos, pos + metaLen)).trim();
+            const titleMatch = metaStr.match(/StreamTitle='([^']*)'/);
+            const artistMatch = metaStr.match(/StreamUrl='([^']*)'/);
+            if (titleMatch && titleMatch[1]) {
+              updateNowPlaying(titleMatch[1]);
+            }
+          }
+          pos += metaLen;
+          bytesUntilMeta = icyMetaInt;
+        }
+      }
+    }
+  }).catch(() => {
+    tryAltMetadata();
+  });
+}
+
+function concatUint8(a, b) {
+  const result = new Uint8Array(a.length + b.length);
+  result.set(a);
+  result.set(b, a.length);
+  return result;
+}
+
+function tryAltMetadata() {
+  if (currentStation < 0) return;
+  const name = STATIONS[currentStation].name;
+
+  const metaEndpoints = [];
+
+  if (name.includes('FIP')) {
+    metaEndpoints.push('https://www.fip.fr/generic/large/xml/instrumental.xml');
+  }
+  if (name.includes('KEXP')) {
+    metaEndpoints.push('https://api.kexp.org/v2/playlist/?format=json');
+  }
+  if (name.includes('SomaFM')) {
+    const channel = name.replace('SomaFM ', '').toLowerCase().replace(/\s+/g, '');
+    metaEndpoints.push(`https://somafm.com/pls/${channel}.xml`);
+  }
+  if (name.includes('BBC')) {
+    metaEndpoints.push('https://rms.api.bbc.co.uk/v2/nowplaying/bbc_6music');
+  }
+
+  if (metaEndpoints.length === 0) {
+    nowPlaying.classList.add('active');
+    npTrack.textContent = '—';
+    return;
+  }
+
+  pollMetadata(metaEndpoints);
+}
+
+function pollMetadata(endpoints) {
+  metadataTimer = setInterval(async () => {
+    if (currentStation < 0) { stopMetadataReader(); return; }
+    for (const url of endpoints) {
+      try {
+        const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
+        const text = await resp.text();
+        parseMetadataResponse(url, text);
+        break;
+      } catch (_) {}
+    }
+  }, 8000);
+
+  // First poll immediately
+  (async () => {
+    for (const url of endpoints) {
+      try {
+        const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
+        const text = await resp.text();
+        parseMetadataResponse(url, text);
+        break;
+      } catch (_) {}
+    }
+  })();
+}
+
+function parseMetadataResponse(url, text) {
+  try {
+    const data = JSON.parse(text);
+
+    // BBC RMS
+    if (data.data && data.data.title) {
+      const artist = data.data.artist || '';
+      const title = data.data.title || '';
+      updateNowPlaying(artist ? `${artist} — ${title}` : title);
+      return;
+    }
+
+    // KEXP
+    if (data.results && data.results.length > 0) {
+      const track = data.results[0];
+      const artist = track.artist || '';
+      const title = track.song || track.title || '';
+      updateNowPlaying(artist ? `${artist} — ${title}` : title);
+      return;
+    }
+
+    // FIP XML (parsed as JSON-ish)
+    if (data.song && data.song.title) {
+      const artist = data.song.artist || '';
+      updateNowPlaying(artist ? `${artist} — ${data.song.title}` : data.song.title);
+      return;
+    }
+  } catch (_) {}
+
+  // Try XML parsing (SomaFM PLS)
+  if (text.includes('<title>')) {
+    const match = text.match(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/);
+    if (!match) {
+      const m2 = text.match(/<title>([^<]+)<\/title>/);
+      if (m2 && m2[1] && !m2[1].includes('SomaFM') && !m2[1].includes('PLS')) {
+        updateNowPlaying(m2[1]);
+      }
+    } else {
+      updateNowPlaying(match[1]);
+    }
+  }
+}
+
+function updateNowPlaying(track) {
+  if (!track || track === '—') {
+    npTrack.textContent = '—';
+    nowPlaying.classList.add('active');
+    return;
+  }
+  nowPlaying.classList.add('active');
+  npTrack.textContent = track;
+  npTrack.title = track;
+}
+
+function stopMetadataReader() {
+  if (metadataAbort) {
+    metadataAbort.abort();
+    metadataAbort = null;
+  }
+  if (metadataTimer) {
+    clearInterval(metadataTimer);
+    metadataTimer = null;
+  }
+  nowPlaying.classList.remove('active');
+  npTrack.textContent = '—';
+}
+
 document.querySelectorAll('.tab').forEach(tab => {
   tab.addEventListener('click', () => {
     document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -164,6 +354,129 @@ document.querySelectorAll('.tab').forEach(tab => {
     document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
   });
 });
+
+let reorderMode = false;
+const reorderBtn = document.getElementById('reorderBtn');
+const stationsPanel = document.getElementById('stationsPanel');
+
+reorderBtn.addEventListener('click', () => {
+  reorderMode = !reorderMode;
+  reorderBtn.classList.toggle('active', reorderMode);
+  stationsPanel.classList.toggle('reorder-mode', reorderMode);
+  renderStations();
+});
+
+function saveStationOrder() {
+  const order = STATIONS.map(s => s.url);
+  localStorage.setItem('stationOrder', JSON.stringify(order));
+}
+
+function loadStationOrder() {
+  const saved = localStorage.getItem('stationOrder');
+  if (!saved) return;
+  try {
+    const order = JSON.parse(saved);
+    const map = new Map(STATIONS.map((s, i) => [s.url, i]));
+    const reordered = [];
+    for (const url of order) {
+      const idx = map.get(url);
+      if (idx !== undefined) reordered.push(STATIONS[idx]);
+    }
+    for (const s of STATIONS) {
+      if (!reordered.find(r => r.url === s.url)) reordered.push(s);
+    }
+    STATIONS.length = 0;
+    STATIONS.push(...reordered);
+  } catch (_) {}
+}
+
+let dragSrcIndex = null;
+
+function setupDragAndDrop() {
+  const cards = stationsList.querySelectorAll('.station-card');
+  cards.forEach(card => {
+    const handle = card.querySelector('.drag-handle');
+    if (!handle) return;
+
+    handle.addEventListener('touchstart', (e) => {
+      dragSrcIndex = parseInt(card.dataset.index);
+      card.classList.add('dragging');
+      e.preventDefault();
+    }, { passive: false });
+
+    handle.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetCard = target?.closest('.station-card');
+      cards.forEach(c => c.classList.remove('drag-over'));
+      if (targetCard && parseInt(targetCard.dataset.index) !== dragSrcIndex) {
+        targetCard.classList.add('drag-over');
+      }
+    }, { passive: false });
+
+    handle.addEventListener('touchend', (e) => {
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetCard = target?.closest('.station-card');
+      cards.forEach(c => { c.classList.remove('dragging'); c.classList.remove('drag-over'); });
+
+      if (targetCard) {
+        const targetIndex = parseInt(targetCard.dataset.index);
+        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+          const item = STATIONS.splice(dragSrcIndex, 1)[0];
+          STATIONS.splice(targetIndex, 0, item);
+          if (currentStation === dragSrcIndex) currentStation = targetIndex;
+          else if (dragSrcIndex < currentStation && targetIndex >= currentStation) currentStation--;
+          else if (dragSrcIndex > currentStation && targetIndex <= currentStation) currentStation++;
+          saveStationOrder();
+          renderStations();
+        }
+      }
+      dragSrcIndex = null;
+    });
+
+    handle.addEventListener('mousedown', (e) => {
+      dragSrcIndex = parseInt(card.dataset.index);
+      card.classList.add('dragging');
+      e.preventDefault();
+
+      const onMove = (ev) => {
+        const target = document.elementFromPoint(ev.clientX, ev.clientY);
+        const targetCard = target?.closest('.station-card');
+        cards.forEach(c => c.classList.remove('drag-over'));
+        if (targetCard && parseInt(targetCard.dataset.index) !== dragSrcIndex) {
+          targetCard.classList.add('drag-over');
+        }
+      };
+
+      const onUp = (ev) => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        const target = document.elementFromPoint(ev.clientX, ev.clientY);
+        const targetCard = target?.closest('.station-card');
+        cards.forEach(c => { c.classList.remove('dragging'); c.classList.remove('drag-over'); });
+
+        if (targetCard) {
+          const targetIndex = parseInt(targetCard.dataset.index);
+          if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+            const item = STATIONS.splice(dragSrcIndex, 1)[0];
+            STATIONS.splice(targetIndex, 0, item);
+            if (currentStation === dragSrcIndex) currentStation = targetIndex;
+            else if (dragSrcIndex < currentStation && targetIndex >= currentStation) currentStation--;
+            else if (dragSrcIndex > currentStation && targetIndex <= currentStation) currentStation++;
+            saveStationOrder();
+            renderStations();
+          }
+        }
+        dragSrcIndex = null;
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
 
 playBtn.addEventListener('click', togglePlay);
 recordBtn.addEventListener('click', toggleRecording);
@@ -184,8 +497,13 @@ function getFilteredStations() {
 function renderStations() {
   const filtered = getFilteredStations();
 
-  stationsList.innerHTML = filtered.map(s => `
+  stationsList.innerHTML = `
+    <div class="reorder-hint">Перетащите за ≡ для изменения порядка</div>
+    ${filtered.map(s => `
     <div class="station-card ${currentStation === s.index ? 'current' : ''}" data-index="${s.index}">
+      <div class="drag-handle">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg>
+      </div>
       <div class="station-card-icon">${s.name.substring(0, 2).toUpperCase()}</div>
       <div class="station-card-info">
         <div class="station-card-name">${escapeHtml(s.name)}</div>
@@ -198,11 +516,16 @@ function renderStations() {
         }
       </div>
     </div>
-  `).join('');
+  `).join('')}`;
 
   stationsList.querySelectorAll('.station-card').forEach(card => {
-    card.addEventListener('click', () => playStation(parseInt(card.dataset.index)));
+    card.addEventListener('click', (e) => {
+      if (e.target.closest('.drag-handle')) return;
+      playStation(parseInt(card.dataset.index));
+    });
   });
+
+  setupDragAndDrop();
 }
 
 function escapeHtml(text) {
@@ -223,6 +546,7 @@ async function playStation(index) {
     currentStation = -1;
     isPlaying = false;
     stopBufferMonitor();
+    stopMetadataReader();
     bufferInfo.classList.remove('active');
     updatePlayerUI();
     renderStations();
@@ -244,6 +568,7 @@ async function playStation(index) {
     await audio.play();
     playerBar.classList.add('active');
     startBufferMonitor();
+    startMetadataReader();
     updatePlayerUI();
     renderStations();
   } catch (e) {
@@ -516,5 +841,6 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
+loadStationOrder();
 renderStations();
 renderRecordings();
