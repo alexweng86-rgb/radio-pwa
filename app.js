@@ -34,9 +34,16 @@ let audioChunks = [];
 let searchQuery = '';
 let bufferMonitorTimer = null;
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+let audioCtx = null;
 let sourceNode = null;
 let destNode = null;
+
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
 
 const playerBar = document.getElementById('playerBar');
 const stationName = document.getElementById('stationName');
@@ -561,7 +568,8 @@ async function playStation(index) {
   STATIONS[index]._proxyAttempt = 0;
 
   try {
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const ctx = ensureAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
     audio.src = getProxiedUrl(STATIONS[index].url);
     audio.load();
     await audio.play();
@@ -620,20 +628,21 @@ async function startRecording() {
   }
 
   try {
-    if (audioCtx.state === 'suspended') await audioCtx.resume();
+    const ctx = ensureAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
 
     if (!sourceNode) {
-      const currentUrl = audio.src;
-      const proxyUrl = CORS_PROXY + encodeURIComponent(currentUrl);
+      const originalUrl = STATIONS[currentStation].url;
+      const proxyUrl = getProxiedUrl(originalUrl);
       audio.crossOrigin = 'anonymous';
       audio.src = proxyUrl;
       audio.load();
       await audio.play();
 
-      sourceNode = audioCtx.createMediaElementSource(audio);
-      destNode = audioCtx.createMediaStreamDestination();
+      sourceNode = ctx.createMediaElementSource(audio);
+      destNode = ctx.createMediaStreamDestination();
       sourceNode.connect(destNode);
-      sourceNode.connect(audioCtx.destination);
+      sourceNode.connect(ctx.destination);
     }
 
     const stream = destNode.stream;
