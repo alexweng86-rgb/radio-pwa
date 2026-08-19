@@ -1,8 +1,6 @@
 var CORS_PROXY = 'https://corsproxy.io/?';
-var CORS_PROXY2 = 'https://api.allorigins.win/raw?url=';
 
 var STATIONS = [
-  { name: 'Radio Paradise', url: 'http://stream.radioparadise.com/mp3-192', genre: 'Eclectic', bitrate: 192 },
   { name: 'KEXP Seattle', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie / Alt', bitrate: 128 },
   { name: 'SomaFM Groove Salad', url: 'https://ice1.somafm.com/groovesalad-128-mp3', genre: 'Chillout', bitrate: 128 },
   { name: 'SomaFM Drone Zone', url: 'https://ice1.somafm.com/dronezone-128-mp3', genre: 'Ambient', bitrate: 128 },
@@ -11,7 +9,6 @@ var STATIONS = [
   { name: 'SomaFM Metal Detector', url: 'https://ice1.somafm.com/metal-128-mp3', genre: 'Metal', bitrate: 128 },
   { name: 'SomaFM The InSound', url: 'https://ice1.somafm.com/insound-128-mp3', genre: 'Indie', bitrate: 128 },
   { name: 'SomaFM 70s', url: 'https://ice1.somafm.com/seventies-128-mp3', genre: '70s', bitrate: 128 },
-  { name: 'Lofi Radio', url: 'https://play.streamafrica.net/lofiradio', genre: 'Lo-Fi', bitrate: 128 },
   { name: 'RadioBoss', url: 'https://c14.radioboss.fm:8124/stream', genre: 'Pop / Dance', bitrate: 128 }
 ];
 
@@ -28,7 +25,6 @@ var bufferMonitorTimer = null;
 var audioCtx = null;
 var sourceNode = null;
 var destNode = null;
-var metadataAbort = null;
 var metadataTimer = null;
 var TARGET_BUFFER = 60;
 var MIN_BUFFER_TO_PLAY = 2;
@@ -64,14 +60,6 @@ function ensureAudioCtx() {
   return audioCtx;
 }
 
-function getProxiedUrl(url) {
-  return CORS_PROXY + encodeURIComponent(url);
-}
-
-function getProxiedUrl2(url) {
-  return CORS_PROXY2 + encodeURIComponent(url);
-}
-
 function escapeHtml(text) {
   var d = document.createElement('div');
   d.textContent = text;
@@ -99,18 +87,18 @@ audio.addEventListener('pause', function() {
 
 audio.addEventListener('waiting', function() {
   bufferBarFill.classList.add('loading');
-  bufferText.textContent = 'Буферизация...';
+  bufferText.textContent = '\u0411\u0443\u0444\u0435\u0440\u0438\u0437\u0430\u0446\u0438\u044f...';
   bufferInfo.classList.add('active');
 });
 
 audio.addEventListener('canplay', function() {
-  updateBufferInfo();
   bufferBarFill.classList.remove('loading');
+  updateBufferInfo();
 });
 
 audio.addEventListener('error', function() {
   if (currentStation >= 0) {
-    showToast('Ошибка соединения, пробую прокси...');
+    showToast('\u041e\u0448\u0438\u0431\u043a\u0430 \u0441\u043e\u0435\u0434\u0438\u043d\u0435\u043d\u0438\u044f, \u043f\u0440\u043e\u0431\u0443\u044e \u043f\u0440\u043e\u043a\u0441\u0438...');
     tryNextProxy();
   }
 });
@@ -122,11 +110,9 @@ function tryNextProxy() {
   s._proxyAttempt++;
 
   if (s._proxyAttempt === 1) {
-    audio.src = getProxiedUrl2(s.url);
-  } else if (s._proxyAttempt === 2) {
-    audio.src = s.url;
+    audio.src = CORS_PROXY + encodeURIComponent(s.url);
   } else {
-    showToast('Станция недоступна');
+    showToast('\u0421\u0442\u0430\u043d\u0446\u0438\u044f \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430');
     s._proxyAttempt = 0;
     stopBufferMonitor();
     bufferInfo.classList.remove('active');
@@ -144,17 +130,17 @@ function updateBufferInfo() {
   bufferInfo.classList.add('active');
 
   if (buffered < MIN_BUFFER_TO_PLAY) {
-    bufferText.textContent = 'Буфер: ' + buffered.toFixed(0) + 'с — загрузка...';
+    bufferText.textContent = '\u0411\u0443\u0444\u0435\u0440: ' + buffered.toFixed(0) + '\u0441 \u2014 \u0437\u0430\u0433\u0440\u0443\u0437\u043a\u0430...';
     bufferBarFill.classList.add('loading');
   } else if (buffered >= TARGET_BUFFER) {
-    bufferText.textContent = 'Буфер: ' + buffered.toFixed(0) + 'с — стабильно';
+    bufferText.textContent = '\u0411\u0443\u0444\u0435\u0440: ' + buffered.toFixed(0) + '\u0441 \u2014 \u0441\u0442\u0430\u0431\u0438\u043b\u044c\u043d\u043e';
   } else {
-    bufferText.textContent = 'Буфер: ' + buffered.toFixed(0) + 'с / ' + TARGET_BUFFER + 'с';
+    bufferText.textContent = '\u0411\u0443\u0444\u0435\u0440: ' + buffered.toFixed(0) + '\u0441 / ' + TARGET_BUFFER + '\u0441';
   }
 }
 
 function getBufferedSeconds() {
-  if (!audio.buffered.length || !audio.duration) return 0;
+  if (!audio.buffered.length || !audio.duration || !isFinite(audio.duration)) return 0;
   var current = audio.currentTime;
   for (var i = 0; i < audio.buffered.length; i++) {
     if (audio.buffered.start(i) <= current && audio.buffered.end(i) >= current) {
@@ -180,63 +166,6 @@ function startMetadataReader() {
   stopMetadataReader();
   if (currentStation < 0) return;
 
-  var url = STATIONS[currentStation].url;
-  var proxiedUrl = getProxiedUrl(url);
-
-  metadataAbort = new AbortController();
-
-  fetch(proxiedUrl, {
-    signal: metadataAbort.signal,
-    headers: { 'icy-metadata': '1' }
-  }).then(function(resp) {
-    var icyMetaInt = parseInt(resp.headers.get('icy-metaint'));
-    if (!icyMetaInt) {
-      tryAltMetadata();
-      return;
-    }
-
-    var reader = resp.body.getReader();
-    var bytesUntilMeta = icyMetaInt;
-
-    function readChunk() {
-      return reader.read().then(function(result) {
-        if (result.done) return;
-        var value = result.value;
-        if (!value) return;
-
-        var pos = 0;
-        while (pos < value.length) {
-          var remaining = Math.min(bytesUntilMeta, value.length - pos);
-          pos += remaining;
-          bytesUntilMeta -= remaining;
-
-          if (bytesUntilMeta === 0) {
-            if (pos < value.length) {
-              var metaLen = value[pos] * 16;
-              pos++;
-              if (metaLen > 0 && pos + metaLen <= value.length) {
-                var metaStr = new TextDecoder('utf-8').decode(value.slice(pos, pos + metaLen)).trim();
-                var titleMatch = metaStr.match(/StreamTitle='([^']*)'/);
-                if (titleMatch && titleMatch[1]) {
-                  updateNowPlaying(titleMatch[1]);
-                }
-              }
-              pos += metaLen;
-            }
-            bytesUntilMeta = icyMetaInt;
-          }
-        }
-        return readChunk();
-      });
-    }
-    return readChunk();
-  }).catch(function() {
-    tryAltMetadata();
-  });
-}
-
-function tryAltMetadata() {
-  if (currentStation < 0) return;
   var name = STATIONS[currentStation].name;
   var metaEndpoints = [];
 
@@ -250,7 +179,7 @@ function tryAltMetadata() {
 
   if (metaEndpoints.length === 0) {
     nowPlaying.classList.add('active');
-    npTrack.textContent = '—';
+    npTrack.textContent = '\u2014';
     return;
   }
 
@@ -259,9 +188,10 @@ function tryAltMetadata() {
 
 function pollMetadata(endpoints) {
   function doPoll() {
+    if (currentStation < 0) { stopMetadataReader(); return; }
     for (var i = 0; i < endpoints.length; i++) {
       (function(url) {
-        fetch(getProxiedUrl(url)).then(function(resp) {
+        fetch(url).then(function(resp) {
           return resp.text();
         }).then(function(text) {
           parseMetadataResponse(url, text);
@@ -282,7 +212,7 @@ function parseMetadataResponse(url, text) {
       var track = data.results[0];
       var artist = track.artist || '';
       var title = track.song || track.title || '';
-      updateNowPlaying(artist ? artist + ' — ' + title : title);
+      updateNowPlaying(artist ? artist + ' \u2014 ' + title : title);
       return;
     }
   } catch (_) {}
@@ -302,8 +232,8 @@ function parseMetadataResponse(url, text) {
 
 function updateNowPlaying(track) {
   nowPlaying.classList.add('active');
-  if (!track || track === '—') {
-    npTrack.textContent = '—';
+  if (!track || track === '\u2014') {
+    npTrack.textContent = '\u2014';
   } else {
     npTrack.textContent = track;
     npTrack.title = track;
@@ -311,16 +241,12 @@ function updateNowPlaying(track) {
 }
 
 function stopMetadataReader() {
-  if (metadataAbort) {
-    metadataAbort.abort();
-    metadataAbort = null;
-  }
   if (metadataTimer) {
     clearInterval(metadataTimer);
     metadataTimer = null;
   }
   nowPlaying.classList.remove('active');
-  npTrack.textContent = '—';
+  npTrack.textContent = '\u2014';
 }
 
 function getFilteredStations() {
@@ -334,7 +260,7 @@ function getFilteredStations() {
 
 function renderStations() {
   var filtered = getFilteredStations();
-  var html = '<div class="reorder-hint">Перетащите за \u2261 для изменения порядка</div>';
+  var html = '<div class="reorder-hint">\u041f\u0435\u0440\u0435\u0442\u0430\u0449\u0438\u0442\u0435 \u0437\u0430 \u2261 \u0434\u043b\u044f \u0438\u0437\u043c\u0435\u043d\u0435\u043d\u0438\u044f \u043f\u043e\u0440\u044f\u0434\u043a\u0430</div>';
 
   for (var i = 0; i < filtered.length; i++) {
     var s = filtered[i].station;
@@ -375,7 +301,7 @@ function renderStations() {
 
 function playStation(index) {
   if (isRecording) {
-    showToast('Остановите запись перед сменой станции');
+    showToast('\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u0437\u0430\u043f\u0438\u0441\u044c \u043f\u0435\u0440\u0435\u0434 \u0441\u043c\u0435\u043d\u043e\u0439 \u0441\u0442\u0430\u043d\u0446\u0438\u0438');
     return;
   }
 
@@ -394,7 +320,7 @@ function playStation(index) {
 
   stopBufferMonitor();
   bufferBarFill.classList.add('loading');
-  bufferText.textContent = 'Подключение...';
+  bufferText.textContent = '\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435...';
   bufferInfo.classList.add('active');
 
   currentStation = index;
@@ -405,7 +331,7 @@ function playStation(index) {
     ctx.resume();
   }
 
-  audio.src = getProxiedUrl(STATIONS[index].url);
+  audio.src = STATIONS[index].url;
   audio.load();
 
   var playPromise = audio.play();
@@ -468,7 +394,7 @@ function toggleRecording() {
 
 function startRecording() {
   if (!isPlaying) {
-    showToast('Сначала запустите воспроизведение');
+    showToast('\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435');
     return;
   }
 
@@ -478,7 +404,7 @@ function startRecording() {
 
     if (!sourceNode) {
       var originalUrl = STATIONS[currentStation].url;
-      var proxyUrl = getProxiedUrl(originalUrl);
+      var proxyUrl = CORS_PROXY + encodeURIComponent(originalUrl);
       audio.crossOrigin = 'anonymous';
       audio.src = proxyUrl;
       audio.load();
@@ -506,7 +432,7 @@ function startRecording() {
       var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
       var sName = currentStation >= 0 ? STATIONS[currentStation].name : 'Unknown';
       saveRecording(blob, sName).then(function() {
-        showToast('Запись сохранена');
+        showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0430');
         renderRecordings();
       });
     };
@@ -518,9 +444,9 @@ function startRecording() {
     recordingBadge.classList.add('active');
     recordBtn.classList.add('recording');
     recordingTimer = setInterval(updateRecordingTime, 1000);
-    showToast('Запись началась');
+    showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0430\u0447\u0430\u043b\u0430\u0441\u044c');
   } catch (e) {
-    showToast('Ошибка записи: ' + e.message);
+    showToast('\u041e\u0448\u0438\u0431\u043a\u0430 \u0437\u0430\u043f\u0438\u0441\u0438: ' + e.message);
   }
 }
 
@@ -591,7 +517,7 @@ function deleteRecording(id) {
     tx.objectStore('recordings').delete(id);
     return new Promise(function(resolve) {
       tx.oncomplete = function() {
-        showToast('Запись удалена');
+        showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u0443\u0434\u0430\u043b\u0435\u043d\u0430');
         renderRecordings();
         resolve();
       };
@@ -619,7 +545,7 @@ function playRecording(id) {
       var url = URL.createObjectURL(rec.blob);
       currentRecordingAudio = new Audio(url);
       currentRecordingAudio.play();
-      showToast('Воспроизведение: ' + rec.station);
+      showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435: ' + rec.station);
     };
   });
 }

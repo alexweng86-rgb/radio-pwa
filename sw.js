@@ -1,4 +1,4 @@
-var CACHE_NAME = 'radio-pwa-v3';
+var CACHE_NAME = 'radio-pwa-v4';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();
