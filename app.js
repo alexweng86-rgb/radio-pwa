@@ -1,7 +1,30 @@
 const CORS_PROXY = 'https://corsproxy.io/?';
-const API_URL = 'https://de1.api.radio-browser.info/json/stations/topvote/50?hidebroken=true';
 
-let stations = [];
+const STATIONS = [
+  { name: 'Chillhop Radio', url: 'https://stream.zeno.fm/0r0xa792kwzuv', genre: 'Lo-Fi', bitrate: 128 },
+  { name: 'Lofi Hip Hop', url: 'https://streams.illfacto.com/lofi', genre: 'Lo-Fi', bitrate: 128 },
+  { name: 'Jazz FM', url: 'https://jazz-am.streamguys1.com/live', genre: 'Jazz', bitrate: 128 },
+  { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-hifi.aac', genre: 'Eclectic', bitrate: 192 },
+  { name: 'FIP Jazz', url: 'https://icecast.radiofrance.fr/fipjazz-hifi.aac', genre: 'Jazz', bitrate: 192 },
+  { name: 'FIP Groove', url: 'https://icecast.radiofrance.fr/fipgroove-hifi.aac', genre: 'Funk / Soul', bitrate: 128 },
+  { name: 'FIP Reggae', url: 'https://icecast.radiofrance.fr/fipreggae-hifi.aac', genre: 'Reggae', bitrate: 128 },
+  { name: 'Nova Brazil', url: 'https://icecast.radiofrance.fr/nova-hifi.aac', genre: 'Brazilian', bitrate: 128 },
+  { name: 'Mouv Radio', url: 'https://icecast.radiofrance.fr/mouv-hifi.aac', genre: 'Hip-Hop', bitrate: 128 },
+  { name: 'BBC Radio 6 Music', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_6music', genre: 'Alternative', bitrate: 128 },
+  { name: 'KEXP Seattle', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie / Alt', bitrate: 128 },
+  { name: 'SBS Chill', url: 'https://sbs-ice.streamguys1.com/chill-128', genre: 'Chill', bitrate: 128 },
+  { name: 'NTS Radio 1', url: 'https://stream-relay-geo.ntslive.net/stream', genre: 'Eclectic', bitrate: 128 },
+  { name: 'SomaFM Drone Zone', url: 'https://somafm.com/dronezone130.mp3', genre: 'Ambient', bitrate: 130 },
+  { name: 'SomaFM Groove Salad', url: 'https://somafm.com/groovesalad130.mp3', genre: 'Chillout', bitrate: 130 },
+  { name: 'SomaFM DEF CON', url: 'https://somafm.com/defcon130.mp3', genre: 'Electronic', bitrate: 130 },
+  { name: 'Classic Rock Florida', url: 'https://ais-sa1.streamon.fm/7124_48k.aac', genre: 'Rock', bitrate: 48 },
+  { name: 'Radio Parallax', url: 'https://stream.zeno.fm/p7evu5b4khiuv', genre: 'Ambient', bitrate: 128 },
+  { name: 'Snazz FM', url: 'https://d3svlz1bsk84o.cloudfront.net/snazzfm.aac', genre: 'Pop / Dance', bitrate: 128 },
+  { name: 'Techno Workout', url: 'https://stream.zeno.fm/0x7r5mpn1i8uv', genre: 'Techno', bitrate: 128 },
+  { name: 'Futuro House', url: 'https://stream.zeno.fm/1m9fbpuu6mnkv', genre: 'House', bitrate: 128 },
+  { name: 'UK Garage', url: 'https://stream.zeno.fm/x5re2d4tmrbuv', genre: 'UK Garage', bitrate: 128 },
+];
+
 let currentStation = -1;
 let isPlaying = false;
 let isRecording = false;
@@ -56,7 +79,6 @@ audio.addEventListener('pause', () => {
 
 audio.addEventListener('waiting', () => {
   bufferBarFill.classList.add('loading');
-  bufferBarFill.classList.remove('loading');
   bufferText.textContent = 'Буферизация...';
   bufferInfo.classList.add('active');
 });
@@ -66,26 +88,28 @@ audio.addEventListener('canplay', () => {
   bufferBarFill.classList.remove('loading');
 });
 
-audio.addEventListener('error', (e) => {
+audio.addEventListener('error', () => {
   if (currentStation >= 0) {
-    showToast('Ошибка соединения, пробую другой сервер...');
+    showToast('Ошибка соединения, пробую прокси...');
     tryNextProxy();
   }
 });
 
 function tryNextProxy() {
   if (currentStation < 0) return;
-  const s = stations[currentStation];
+  const s = STATIONS[currentStation];
   if (!s._proxyAttempt) s._proxyAttempt = 0;
   s._proxyAttempt++;
 
   if (s._proxyAttempt === 1) {
-    audio.src = CORS_PROXY + encodeURIComponent(s.url_resolved);
+    audio.src = CORS_PROXY + encodeURIComponent(s.url);
   } else if (s._proxyAttempt === 2) {
-    audio.src = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(s.url_resolved);
+    audio.src = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(s.url);
   } else {
     showToast('Станция недоступна');
     s._proxyAttempt = 0;
+    stopBufferMonitor();
+    bufferInfo.classList.remove('active');
     return;
   }
   audio.play().catch(() => {});
@@ -151,52 +175,14 @@ searchInput.addEventListener('input', (e) => {
   renderStations();
 });
 
-async function loadStations() {
-  stationsList.innerHTML = '<div class="empty-state"><p>Загрузка станций...</p></div>';
-
-  try {
-    const resp = await fetch(API_URL);
-    const data = await resp.json();
-    stations = data
-      .filter(s => s.url_resolved && (s.codec === 'MP3' || s.codec === 'AAC' || s.codec === 'OGG' || s.codec === 'AAC+'))
-      .map(s => ({
-        name: s.name,
-        url: s.url_resolved,
-        genre: s.tags ? s.tags.split(',').slice(0, 2).join(', ') : s.countrycode,
-        country: s.countrycode,
-        codec: s.codec,
-        bitrate: s.bitrate,
-        favicon: s.favicon,
-        _proxyAttempt: 0,
-      }))
-      .slice(0, 30);
-  } catch (e) {
-    stations = getFallbackStations();
-  }
-
-  renderStations();
-}
-
-function getFallbackStations() {
-  return [
-    { name: 'Europa Plus LV', url: 'https://stream.euroradio.lv/ep1.mp3', genre: 'Pop', country: 'LV', codec: 'MP3', bitrate: 128 },
-    { name: 'Radio Record', url: 'https://radiorecord.hostingradio.ru/record.mp3', genre: 'Electronic', country: 'RU', codec: 'MP3', bitrate: 192 },
-    { name: 'Lofi Hip Hop', url: 'https://streams.illfacto.com/lofi', genre: 'Lo-Fi', country: 'US', codec: 'MP3', bitrate: 128 },
-    { name: 'Classic Rock FL', url: 'https://ais-sa1.streamon.fm/7124_48k.aac', genre: 'Rock', country: 'US', codec: 'AAC', bitrate: 48 },
-    { name: 'Kiss FM RO', url: 'https://www.kissfm.ro/kissfm/digital/kissfm.mp3', genre: 'Pop', country: 'RO', codec: 'MP3', bitrate: 128 },
-  ];
-}
-
 function getFilteredStations() {
-  if (!searchQuery) return stations.map((s, i) => ({ ...s, index: i }));
-  return stations.map((s, i) => ({ ...s, index: i }))
+  if (!searchQuery) return STATIONS.map((s, i) => ({ ...s, index: i }));
+  return STATIONS.map((s, i) => ({ ...s, index: i }))
     .filter(s => s.name.toLowerCase().includes(searchQuery) || s.genre.toLowerCase().includes(searchQuery));
 }
 
 function renderStations() {
   const filtered = getFilteredStations();
-
-  if (filtered.length === 0 && stations.length === 0) return;
 
   stationsList.innerHTML = filtered.map(s => `
     <div class="station-card ${currentStation === s.index ? 'current' : ''}" data-index="${s.index}">
@@ -249,11 +235,11 @@ async function playStation(index) {
   bufferInfo.classList.add('active');
 
   currentStation = index;
-  stations[index]._proxyAttempt = 0;
+  STATIONS[index]._proxyAttempt = 0;
 
   try {
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    audio.src = stations[index].url;
+    audio.src = STATIONS[index].url;
     audio.load();
     await audio.play();
     playerBar.classList.add('active');
@@ -278,8 +264,8 @@ function togglePlay() {
 
 function updatePlayerUI() {
   if (currentStation >= 0) {
-    stationName.textContent = stations[currentStation].name;
-    stationGenre.textContent = stations[currentStation].genre || '';
+    stationName.textContent = STATIONS[currentStation].name;
+    stationGenre.textContent = STATIONS[currentStation].genre || '';
     playBtn.disabled = false;
     recordBtn.disabled = false;
   }
@@ -333,7 +319,7 @@ async function startRecording() {
 
     mediaRecorder.onstop = async () => {
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-      const stationName_ = stations[currentStation]?.name || 'Unknown';
+      const stationName_ = STATIONS[currentStation]?.name || 'Unknown';
       await saveRecording(blob, stationName_);
       showToast('Запись сохранена');
       renderRecordings();
@@ -530,5 +516,5 @@ if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('sw.js').catch(() => {});
 }
 
-loadStations();
+renderStations();
 renderRecordings();
