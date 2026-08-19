@@ -487,6 +487,25 @@ function openDB() {
 }
 
 function saveRecording(blob, station) {
+  if (dirHandle) {
+    return saveRecordingToDir(blob, station);
+  }
+  return saveRecordingToDB(blob, station);
+}
+
+function saveRecordingToDir(blob, station) {
+  return dirHandle.getFileHandle('radio-' + Date.now() + '.webm', { create: true }).then(function(fh) {
+    return fh.createWritable();
+  }).then(function(writable) {
+    return writable.write(blob).then(function() {
+      return writable.close();
+    });
+  }).catch(function() {
+    return saveRecordingToDB(blob, station);
+  });
+}
+
+function saveRecordingToDB(blob, station) {
   return openDB().then(function(db) {
     var tx = db.transaction('recordings', 'readwrite');
     tx.objectStore('recordings').add({
@@ -723,9 +742,6 @@ document.querySelectorAll('.tab').forEach(function(tab) {
 
 playBtn.addEventListener('click', togglePlay);
 recordBtn.addEventListener('click', toggleRecording);
-volumeSlider.addEventListener('input', function() {
-  audio.volume = volumeSlider.value / 100;
-});
 searchInput.addEventListener('input', function(e) {
   searchQuery = e.target.value.toLowerCase();
   renderStations();
@@ -734,3 +750,93 @@ searchInput.addEventListener('input', function(e) {
 loadStationOrder();
 renderStations();
 renderRecordings();
+
+var settingsOverlay = document.getElementById('settingsOverlay');
+var settingsBtn = document.getElementById('settingsBtn');
+var settingsClose = document.getElementById('settingsClose');
+var settingsChooseFolder = document.getElementById('settingsChooseFolder');
+var settingsResetFolder = document.getElementById('settingsResetFolder');
+var settingsPath = document.getElementById('settingsPath');
+var settingsVolume = document.getElementById('settingsVolume');
+var dirHandle = null;
+
+function loadSettings() {
+  var saved = localStorage.getItem('radioSettings');
+  if (!saved) return;
+  try {
+    var s = JSON.parse(saved);
+    if (s.volume !== undefined) {
+      audio.volume = s.volume / 100;
+      volumeSlider.value = s.volume;
+    }
+  } catch (_) {}
+}
+
+function saveSettingsObj(obj) {
+  localStorage.setItem('radioSettings', JSON.stringify(obj));
+}
+
+function getSettingsObj() {
+  try { return JSON.parse(localStorage.getItem('radioSettings') || '{}'); }
+  catch (_) { return {}; }
+}
+
+function updatePathDisplay() {
+  if (dirHandle) {
+    settingsPath.textContent = '\u041f\u0430\u043f\u043a\u0430: ' + dirHandle.name;
+  } else {
+    settingsPath.textContent = '\u0422\u0435\u043a\u0443\u0449\u0430\u044f: IndexedDB (\u0432\u043d\u0443\u0442\u0440\u0435\u043d\u043d\u0435\u0435 \u0445\u0440\u0430\u043d\u0438\u043b\u0438\u0449\u0435)';
+  }
+}
+
+settingsBtn.addEventListener('click', function() {
+  settingsOverlay.classList.add('active');
+  updatePathDisplay();
+});
+
+settingsClose.addEventListener('click', function() {
+  settingsOverlay.classList.remove('active');
+});
+
+settingsOverlay.addEventListener('click', function(e) {
+  if (e.target === settingsOverlay) {
+    settingsOverlay.classList.remove('active');
+  }
+});
+
+settingsChooseFolder.addEventListener('click', function() {
+  if (!('showDirectoryPicker' in window)) {
+    showToast('\u0412\u0430\u0448 \u0431\u0440\u0430\u0443\u0437\u0435\u0440 \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u0432\u044b\u0431\u043e\u0440 \u043f\u0430\u043f\u043a\u0438');
+    return;
+  }
+  window.showDirectoryPicker({ mode: 'readwrite' }).then(function(handle) {
+    dirHandle = handle;
+    updatePathDisplay();
+    showToast('\u041f\u0430\u043f\u043a\u0430 \u0432\u044b\u0431\u0440\u0430\u043d\u0430: ' + handle.name);
+  }).catch(function() {});
+});
+
+settingsResetFolder.addEventListener('click', function() {
+  dirHandle = null;
+  updatePathDisplay();
+  showToast('\u041f\u0430\u043f\u043a\u0430 \u0441\u0431\u0440\u043e\u0448\u0435\u043d\u0430');
+});
+
+settingsVolume.addEventListener('input', function() {
+  audio.volume = settingsVolume.value / 100;
+  volumeSlider.value = settingsVolume.value;
+  var s = getSettingsObj();
+  s.volume = parseInt(settingsVolume.value);
+  saveSettingsObj(s);
+});
+
+volumeSlider.addEventListener('input', function() {
+  audio.volume = volumeSlider.value / 100;
+  settingsVolume.value = volumeSlider.value;
+  var s = getSettingsObj();
+  s.volume = parseInt(volumeSlider.value);
+  saveSettingsObj(s);
+});
+
+loadSettings();
+settingsVolume.value = volumeSlider.value;

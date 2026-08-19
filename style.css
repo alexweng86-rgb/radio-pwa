@@ -59,6 +59,157 @@ header h1 {
   font-weight: 700;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.btn-settings {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--surface);
+  color: var(--text-dim);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-settings:active {
+  background: var(--surface2);
+  color: var(--text);
+}
+
+.settings-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 999;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.settings-overlay.active {
+  display: flex;
+}
+
+.settings-modal {
+  width: 100%;
+  max-width: 480px;
+  background: var(--surface);
+  border-radius: var(--radius) var(--radius) 0 0;
+  padding: 0;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--surface2);
+}
+
+.settings-header h2 {
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.settings-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--surface2);
+  color: var(--text);
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.settings-body {
+  padding: 16px 20px 24px;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+}
+
+.settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-section h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+
+.settings-desc {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  line-height: 1.4;
+}
+
+.settings-path {
+  font-size: 12px;
+  color: var(--primary-light);
+  background: var(--surface2);
+  padding: 8px 12px;
+  border-radius: 8px;
+  margin-bottom: 10px;
+  word-break: break-all;
+}
+
+.settings-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-settings-primary {
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  background: var(--primary);
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-settings-primary:active {
+  opacity: 0.8;
+}
+
+.btn-settings-danger {
+  padding: 10px 16px;
+  border: 1px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 500;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.btn-settings-danger:active {
+  background: rgba(255, 64, 129, 0.1);
+}
+
 .recording-badge {
   display: none;
   align-items: center;
@@ -93,10 +244,6 @@ header h1 {
   background: var(--surface);
   border-radius: var(--radius);
   padding: 16px;
-  display: none;
-}
-
-.player-bar.active {
   display: block;
 }
 
