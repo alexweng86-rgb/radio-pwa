@@ -1,35 +1,32 @@
-const CACHE_NAME = 'radio-pwa-v1';
-const SHELL = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/manifest.json',
-  '/icons/icon-192.svg',
-  '/icons/icon-512.svg',
-];
+var CACHE_NAME = 'radio-pwa-v3';
 
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(SHELL))
-  );
+self.addEventListener('install', function(e) {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (e) => {
+self.addEventListener('activate', function(e) {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    caches.keys().then(function(keys) {
+      return Promise.all(keys.filter(function(k) { return k !== CACHE_NAME; }).map(function(k) { return caches.delete(k); }));
+    })
   );
   self.clients.claim();
 });
 
-self.addEventListener('fetch', (e) => {
-  if (e.request.url.includes('stream') || e.request.url.includes('radio') || e.request.url.includes('.mp3') || e.request.url.includes('.aac')) {
+self.addEventListener('fetch', function(e) {
+  var url = e.request.url;
+  if (url.indexOf('corsproxy.io') >= 0 || url.indexOf('allorigins') >= 0 || url.indexOf('somafm.com') >= 0 || url.indexOf('kexp.org') >= 0) {
     return;
   }
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    caches.match(e.request).then(function(cached) {
+      return cached || fetch(e.request).then(function(resp) {
+        if (resp && resp.status === 200) {
+          var clone = resp.clone();
+          caches.open(CACHE_NAME).then(function(cache) { cache.put(e.request, clone); });
+        }
+        return resp;
+      });
+    })
   );
 });

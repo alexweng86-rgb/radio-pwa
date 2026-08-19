@@ -1,7 +1,7 @@
-const CORS_PROXY = 'https://corsproxy.io/?';
-const CORS_PROXY2 = 'https://api.allorigins.win/raw?url=';
+var CORS_PROXY = 'https://corsproxy.io/?';
+var CORS_PROXY2 = 'https://api.allorigins.win/raw?url=';
 
-const STATIONS = [
+var STATIONS = [
   { name: 'Radio Paradise', url: 'http://stream.radioparadise.com/mp3-192', genre: 'Eclectic', bitrate: 192 },
   { name: 'KEXP Seattle', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie / Alt', bitrate: 128 },
   { name: 'SomaFM Groove Salad', url: 'https://ice1.somafm.com/groovesalad-128-mp3', genre: 'Chillout', bitrate: 128 },
@@ -12,8 +12,57 @@ const STATIONS = [
   { name: 'SomaFM The InSound', url: 'https://ice1.somafm.com/insound-128-mp3', genre: 'Indie', bitrate: 128 },
   { name: 'SomaFM 70s', url: 'https://ice1.somafm.com/seventies-128-mp3', genre: '70s', bitrate: 128 },
   { name: 'Lofi Radio', url: 'https://play.streamafrica.net/lofiradio', genre: 'Lo-Fi', bitrate: 128 },
-  { name: 'RadioBoss', url: 'https://c14.radioboss.fm:8124/stream', genre: 'Pop / Dance', bitrate: 128 },
+  { name: 'RadioBoss', url: 'https://c14.radioboss.fm:8124/stream', genre: 'Pop / Dance', bitrate: 128 }
 ];
+
+var currentStation = -1;
+var isPlaying = false;
+var isRecording = false;
+var recordingTimer = null;
+var recordingStartTime = null;
+var audio = new Audio();
+var mediaRecorder = null;
+var audioChunks = [];
+var searchQuery = '';
+var bufferMonitorTimer = null;
+var audioCtx = null;
+var sourceNode = null;
+var destNode = null;
+var metadataAbort = null;
+var metadataTimer = null;
+var TARGET_BUFFER = 60;
+var MIN_BUFFER_TO_PLAY = 2;
+
+var playerBar = document.getElementById('playerBar');
+var stationName = document.getElementById('stationName');
+var stationGenre = document.getElementById('stationGenre');
+var stationIcon = document.getElementById('stationIcon');
+var playBtn = document.getElementById('playBtn');
+var playIcon = document.getElementById('playIcon');
+var stopIcon = document.getElementById('stopIcon');
+var recordBtn = document.getElementById('recordBtn');
+var volumeSlider = document.getElementById('volumeSlider');
+var recordingBadge = document.getElementById('recordingBadge');
+var recordingTime = document.getElementById('recordingTime');
+var stationsList = document.getElementById('stationsList');
+var recordingsList = document.getElementById('recordingsList');
+var emptyRecordings = document.getElementById('emptyRecordings');
+var searchInput = document.getElementById('searchInput');
+var toastEl = document.getElementById('toast');
+var bufferInfo = document.getElementById('bufferInfo');
+var bufferBarFill = document.getElementById('bufferBarFill');
+var bufferText = document.getElementById('bufferText');
+var nowPlaying = document.getElementById('nowPlaying');
+var npTrack = document.getElementById('npTrack');
+var reorderBtn = document.getElementById('reorderBtn');
+var stationsPanel = document.getElementById('stationsPanel');
+
+function ensureAudioCtx() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  return audioCtx;
+}
 
 function getProxiedUrl(url) {
   return CORS_PROXY + encodeURIComponent(url);
@@ -23,80 +72,43 @@ function getProxiedUrl2(url) {
   return CORS_PROXY2 + encodeURIComponent(url);
 }
 
-let currentStation = -1;
-let isPlaying = false;
-let isRecording = false;
-let recordingTimer = null;
-let recordingStartTime = null;
-let audio = new Audio();
-let mediaRecorder = null;
-let audioChunks = [];
-let searchQuery = '';
-let bufferMonitorTimer = null;
-
-let audioCtx = null;
-let sourceNode = null;
-let destNode = null;
-
-function ensureAudioCtx() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  }
-  return audioCtx;
+function escapeHtml(text) {
+  var d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
 }
 
-const playerBar = document.getElementById('playerBar');
-const stationName = document.getElementById('stationName');
-const stationGenre = document.getElementById('stationGenre');
-const stationIcon = document.getElementById('stationIcon');
-const playBtn = document.getElementById('playBtn');
-const playIcon = document.getElementById('playIcon');
-const stopIcon = document.getElementById('stopIcon');
-const recordBtn = document.getElementById('recordBtn');
-const volumeSlider = document.getElementById('volumeSlider');
-const recordingBadge = document.getElementById('recordingBadge');
-const recordingTime = document.getElementById('recordingTime');
-const stationsList = document.getElementById('stationsList');
-const recordingsList = document.getElementById('recordingsList');
-const emptyRecordings = document.getElementById('emptyRecordings');
-const searchInput = document.getElementById('searchInput');
-const toast = document.getElementById('toast');
-const bufferInfo = document.getElementById('bufferInfo');
-const bufferBarFill = document.getElementById('bufferBarFill');
-const bufferText = document.getElementById('bufferText');
-const nowPlaying = document.getElementById('nowPlaying');
-const npTrack = document.getElementById('npTrack');
-
-const TARGET_BUFFER = 60;
-const MIN_BUFFER_TO_PLAY = 2;
-let metadataAbort = null;
-let metadataTimer = null;
+function showToast(msg) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('show');
+  setTimeout(function() { toastEl.classList.remove('show'); }, 2500);
+}
 
 audio.preload = 'auto';
 audio.volume = volumeSlider.value / 100;
 
-audio.addEventListener('playing', () => {
+audio.addEventListener('playing', function() {
   isPlaying = true;
   updatePlayerUI();
 });
 
-audio.addEventListener('pause', () => {
+audio.addEventListener('pause', function() {
   isPlaying = false;
   updatePlayerUI();
 });
 
-audio.addEventListener('waiting', () => {
+audio.addEventListener('waiting', function() {
   bufferBarFill.classList.add('loading');
   bufferText.textContent = 'Буферизация...';
   bufferInfo.classList.add('active');
 });
 
-audio.addEventListener('canplay', () => {
+audio.addEventListener('canplay', function() {
   updateBufferInfo();
   bufferBarFill.classList.remove('loading');
 });
 
-audio.addEventListener('error', () => {
+audio.addEventListener('error', function() {
   if (currentStation >= 0) {
     showToast('Ошибка соединения, пробую прокси...');
     tryNextProxy();
@@ -105,7 +117,7 @@ audio.addEventListener('error', () => {
 
 function tryNextProxy() {
   if (currentStation < 0) return;
-  const s = STATIONS[currentStation];
+  var s = STATIONS[currentStation];
   if (!s._proxyAttempt) s._proxyAttempt = 0;
   s._proxyAttempt++;
 
@@ -120,31 +132,31 @@ function tryNextProxy() {
     bufferInfo.classList.remove('active');
     return;
   }
-  audio.play().catch(() => {});
+  audio.play().catch(function() {});
 }
 
 function updateBufferInfo() {
   if (!isPlaying && currentStation < 0) return;
-  const buffered = getBufferedSeconds();
-  const pct = Math.min(100, (buffered / TARGET_BUFFER) * 100);
+  var buffered = getBufferedSeconds();
+  var pct = Math.min(100, (buffered / TARGET_BUFFER) * 100);
   bufferBarFill.style.width = pct + '%';
   bufferBarFill.classList.remove('loading');
   bufferInfo.classList.add('active');
 
   if (buffered < MIN_BUFFER_TO_PLAY) {
-    bufferText.textContent = `Буфер: ${buffered.toFixed(0)}с — загрузка...`;
+    bufferText.textContent = 'Буфер: ' + buffered.toFixed(0) + 'с — загрузка...';
     bufferBarFill.classList.add('loading');
   } else if (buffered >= TARGET_BUFFER) {
-    bufferText.textContent = `Буфер: ${buffered.toFixed(0)}с — стабильно`;
+    bufferText.textContent = 'Буфер: ' + buffered.toFixed(0) + 'с — стабильно';
   } else {
-    bufferText.textContent = `Буфер: ${buffered.toFixed(0)}с / ${TARGET_BUFFER}с`;
+    bufferText.textContent = 'Буфер: ' + buffered.toFixed(0) + 'с / ' + TARGET_BUFFER + 'с';
   }
 }
 
 function getBufferedSeconds() {
   if (!audio.buffered.length || !audio.duration) return 0;
-  const current = audio.currentTime;
-  for (let i = 0; i < audio.buffered.length; i++) {
+  var current = audio.currentTime;
+  for (var i = 0; i < audio.buffered.length; i++) {
     if (audio.buffered.start(i) <= current && audio.buffered.end(i) >= current) {
       return audio.buffered.end(i) - current;
     }
@@ -168,83 +180,72 @@ function startMetadataReader() {
   stopMetadataReader();
   if (currentStation < 0) return;
 
-  const url = STATIONS[currentStation].url;
-  const proxiedUrl = CORS_PROXY + encodeURIComponent(url);
+  var url = STATIONS[currentStation].url;
+  var proxiedUrl = getProxiedUrl(url);
 
   metadataAbort = new AbortController();
 
   fetch(proxiedUrl, {
     signal: metadataAbort.signal,
     headers: { 'icy-metadata': '1' }
-  }).then(async resp => {
-    const icyMetaInt = parseInt(resp.headers.get('icy-metaint'));
+  }).then(function(resp) {
+    var icyMetaInt = parseInt(resp.headers.get('icy-metaint'));
     if (!icyMetaInt) {
       tryAltMetadata();
       return;
     }
 
-    const reader = resp.body.getReader();
-    let bytesUntilMeta = icyMetaInt;
-    let buffer = new Uint8Array(0);
+    var reader = resp.body.getReader();
+    var bytesUntilMeta = icyMetaInt;
 
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) break;
-      if (!value) continue;
+    function readChunk() {
+      return reader.read().then(function(result) {
+        if (result.done) return;
+        var value = result.value;
+        if (!value) return;
 
-      let pos = 0;
-      while (pos < value.length) {
-        const chunk = value.slice(pos, Math.min(pos + bytesUntilMeta, value.length));
-        buffer = concatUint8(buffer, chunk);
-        pos += chunk.length;
-        bytesUntilMeta -= chunk.length;
+        var pos = 0;
+        while (pos < value.length) {
+          var remaining = Math.min(bytesUntilMeta, value.length - pos);
+          pos += remaining;
+          bytesUntilMeta -= remaining;
 
-        if (bytesUntilMeta === 0) {
-          const metaLen = value[pos] * 16;
-          pos++;
-          if (metaLen > 0 && pos + metaLen <= value.length) {
-            const metaStr = new TextDecoder('utf-8').decode(value.slice(pos, pos + metaLen)).trim();
-            const titleMatch = metaStr.match(/StreamTitle='([^']*)'/);
-            const artistMatch = metaStr.match(/StreamUrl='([^']*)'/);
-            if (titleMatch && titleMatch[1]) {
-              updateNowPlaying(titleMatch[1]);
+          if (bytesUntilMeta === 0) {
+            if (pos < value.length) {
+              var metaLen = value[pos] * 16;
+              pos++;
+              if (metaLen > 0 && pos + metaLen <= value.length) {
+                var metaStr = new TextDecoder('utf-8').decode(value.slice(pos, pos + metaLen)).trim();
+                var titleMatch = metaStr.match(/StreamTitle='([^']*)'/);
+                if (titleMatch && titleMatch[1]) {
+                  updateNowPlaying(titleMatch[1]);
+                }
+              }
+              pos += metaLen;
             }
+            bytesUntilMeta = icyMetaInt;
           }
-          pos += metaLen;
-          bytesUntilMeta = icyMetaInt;
         }
-      }
+        return readChunk();
+      });
     }
-  }).catch(() => {
+    return readChunk();
+  }).catch(function() {
     tryAltMetadata();
   });
 }
 
-function concatUint8(a, b) {
-  const result = new Uint8Array(a.length + b.length);
-  result.set(a);
-  result.set(b, a.length);
-  return result;
-}
-
 function tryAltMetadata() {
   if (currentStation < 0) return;
-  const name = STATIONS[currentStation].name;
+  var name = STATIONS[currentStation].name;
+  var metaEndpoints = [];
 
-  const metaEndpoints = [];
-
-  if (name.includes('FIP')) {
-    metaEndpoints.push('https://www.fip.fr/generic/large/xml/instrumental.xml');
-  }
-  if (name.includes('KEXP')) {
+  if (name.indexOf('KEXP') >= 0) {
     metaEndpoints.push('https://api.kexp.org/v2/playlist/?format=json');
   }
-  if (name.includes('SomaFM')) {
-    const channel = name.replace('SomaFM ', '').toLowerCase().replace(/\s+/g, '');
-    metaEndpoints.push(`https://somafm.com/pls/${channel}.xml`);
-  }
-  if (name.includes('BBC')) {
-    metaEndpoints.push('https://rms.api.bbc.co.uk/v2/nowplaying/bbc_6music');
+  if (name.indexOf('SomaFM') >= 0) {
+    var channel = name.replace('SomaFM ', '').toLowerCase().replace(/\s+/g, '');
+    metaEndpoints.push('https://somafm.com/pls/' + channel + '.xml');
   }
 
   if (metaEndpoints.length === 0) {
@@ -257,66 +258,40 @@ function tryAltMetadata() {
 }
 
 function pollMetadata(endpoints) {
-  metadataTimer = setInterval(async () => {
-    if (currentStation < 0) { stopMetadataReader(); return; }
-    for (const url of endpoints) {
-      try {
-        const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
-        const text = await resp.text();
-        parseMetadataResponse(url, text);
-        break;
-      } catch (_) {}
+  function doPoll() {
+    for (var i = 0; i < endpoints.length; i++) {
+      (function(url) {
+        fetch(getProxiedUrl(url)).then(function(resp) {
+          return resp.text();
+        }).then(function(text) {
+          parseMetadataResponse(url, text);
+        }).catch(function() {});
+      })(endpoints[i]);
+      break;
     }
-  }, 8000);
+  }
 
-  // First poll immediately
-  (async () => {
-    for (const url of endpoints) {
-      try {
-        const resp = await fetch(CORS_PROXY + encodeURIComponent(url));
-        const text = await resp.text();
-        parseMetadataResponse(url, text);
-        break;
-      } catch (_) {}
-    }
-  })();
+  doPoll();
+  metadataTimer = setInterval(doPoll, 8000);
 }
 
 function parseMetadataResponse(url, text) {
   try {
-    const data = JSON.parse(text);
-
-    // BBC RMS
-    if (data.data && data.data.title) {
-      const artist = data.data.artist || '';
-      const title = data.data.title || '';
-      updateNowPlaying(artist ? `${artist} — ${title}` : title);
-      return;
-    }
-
-    // KEXP
+    var data = JSON.parse(text);
     if (data.results && data.results.length > 0) {
-      const track = data.results[0];
-      const artist = track.artist || '';
-      const title = track.song || track.title || '';
-      updateNowPlaying(artist ? `${artist} — ${title}` : title);
-      return;
-    }
-
-    // FIP XML (parsed as JSON-ish)
-    if (data.song && data.song.title) {
-      const artist = data.song.artist || '';
-      updateNowPlaying(artist ? `${artist} — ${data.song.title}` : data.song.title);
+      var track = data.results[0];
+      var artist = track.artist || '';
+      var title = track.song || track.title || '';
+      updateNowPlaying(artist ? artist + ' — ' + title : title);
       return;
     }
   } catch (_) {}
 
-  // Try XML parsing (SomaFM PLS)
-  if (text.includes('<title>')) {
-    const match = text.match(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/);
+  if (text.indexOf('<title>') >= 0) {
+    var match = text.match(/<title><!\[CDATA\[([^\]]+)\]\]><\/title>/);
     if (!match) {
-      const m2 = text.match(/<title>([^<]+)<\/title>/);
-      if (m2 && m2[1] && !m2[1].includes('SomaFM') && !m2[1].includes('PLS')) {
+      var m2 = text.match(/<title>([^<]+)<\/title>/);
+      if (m2 && m2[1] && m2[1].indexOf('SomaFM') < 0 && m2[1].indexOf('PLS') < 0) {
         updateNowPlaying(m2[1]);
       }
     } else {
@@ -326,14 +301,13 @@ function parseMetadataResponse(url, text) {
 }
 
 function updateNowPlaying(track) {
+  nowPlaying.classList.add('active');
   if (!track || track === '—') {
     npTrack.textContent = '—';
-    nowPlaying.classList.add('active');
-    return;
+  } else {
+    npTrack.textContent = track;
+    npTrack.title = track;
   }
-  nowPlaying.classList.add('active');
-  npTrack.textContent = track;
-  npTrack.title = track;
 }
 
 function stopMetadataReader() {
@@ -349,195 +323,57 @@ function stopMetadataReader() {
   npTrack.textContent = '—';
 }
 
-document.querySelectorAll('.tab').forEach(tab => {
-  tab.addEventListener('click', () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    tab.classList.add('active');
-    document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
-  });
-});
-
-let reorderMode = false;
-const reorderBtn = document.getElementById('reorderBtn');
-const stationsPanel = document.getElementById('stationsPanel');
-
-reorderBtn.addEventListener('click', () => {
-  reorderMode = !reorderMode;
-  reorderBtn.classList.toggle('active', reorderMode);
-  stationsPanel.classList.toggle('reorder-mode', reorderMode);
-  renderStations();
-});
-
-function saveStationOrder() {
-  const order = STATIONS.map(s => s.url);
-  localStorage.setItem('stationOrder', JSON.stringify(order));
-}
-
-function loadStationOrder() {
-  const saved = localStorage.getItem('stationOrder');
-  if (!saved) return;
-  try {
-    const order = JSON.parse(saved);
-    const map = new Map(STATIONS.map((s, i) => [s.url, i]));
-    const reordered = [];
-    for (const url of order) {
-      const idx = map.get(url);
-      if (idx !== undefined) reordered.push(STATIONS[idx]);
-    }
-    for (const s of STATIONS) {
-      if (!reordered.find(r => r.url === s.url)) reordered.push(s);
-    }
-    STATIONS.length = 0;
-    STATIONS.push(...reordered);
-  } catch (_) {}
-}
-
-let dragSrcIndex = null;
-
-function setupDragAndDrop() {
-  const cards = stationsList.querySelectorAll('.station-card');
-  cards.forEach(card => {
-    const handle = card.querySelector('.drag-handle');
-    if (!handle) return;
-
-    handle.addEventListener('touchstart', (e) => {
-      dragSrcIndex = parseInt(card.dataset.index);
-      card.classList.add('dragging');
-      e.preventDefault();
-    }, { passive: false });
-
-    handle.addEventListener('touchmove', (e) => {
-      e.preventDefault();
-      const touch = e.touches[0];
-      const target = document.elementFromPoint(touch.clientX, touch.clientY);
-      const targetCard = target?.closest('.station-card');
-      cards.forEach(c => c.classList.remove('drag-over'));
-      if (targetCard && parseInt(targetCard.dataset.index) !== dragSrcIndex) {
-        targetCard.classList.add('drag-over');
-      }
-    }, { passive: false });
-
-    handle.addEventListener('touchend', (e) => {
-      const touch = e.changedTouches[0];
-      const target = document.elementFromPoint(touch.clientX, touch.clientY);
-      const targetCard = target?.closest('.station-card');
-      cards.forEach(c => { c.classList.remove('dragging'); c.classList.remove('drag-over'); });
-
-      if (targetCard) {
-        const targetIndex = parseInt(targetCard.dataset.index);
-        if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-          const item = STATIONS.splice(dragSrcIndex, 1)[0];
-          STATIONS.splice(targetIndex, 0, item);
-          if (currentStation === dragSrcIndex) currentStation = targetIndex;
-          else if (dragSrcIndex < currentStation && targetIndex >= currentStation) currentStation--;
-          else if (dragSrcIndex > currentStation && targetIndex <= currentStation) currentStation++;
-          saveStationOrder();
-          renderStations();
-        }
-      }
-      dragSrcIndex = null;
-    });
-
-    handle.addEventListener('mousedown', (e) => {
-      dragSrcIndex = parseInt(card.dataset.index);
-      card.classList.add('dragging');
-      e.preventDefault();
-
-      const onMove = (ev) => {
-        const target = document.elementFromPoint(ev.clientX, ev.clientY);
-        const targetCard = target?.closest('.station-card');
-        cards.forEach(c => c.classList.remove('drag-over'));
-        if (targetCard && parseInt(targetCard.dataset.index) !== dragSrcIndex) {
-          targetCard.classList.add('drag-over');
-        }
-      };
-
-      const onUp = (ev) => {
-        document.removeEventListener('mousemove', onMove);
-        document.removeEventListener('mouseup', onUp);
-        const target = document.elementFromPoint(ev.clientX, ev.clientY);
-        const targetCard = target?.closest('.station-card');
-        cards.forEach(c => { c.classList.remove('dragging'); c.classList.remove('drag-over'); });
-
-        if (targetCard) {
-          const targetIndex = parseInt(targetCard.dataset.index);
-          if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
-            const item = STATIONS.splice(dragSrcIndex, 1)[0];
-            STATIONS.splice(targetIndex, 0, item);
-            if (currentStation === dragSrcIndex) currentStation = targetIndex;
-            else if (dragSrcIndex < currentStation && targetIndex >= currentStation) currentStation--;
-            else if (dragSrcIndex > currentStation && targetIndex <= currentStation) currentStation++;
-            saveStationOrder();
-            renderStations();
-          }
-        }
-        dragSrcIndex = null;
-      };
-
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', onUp);
-    });
-  });
-}
-
-playBtn.addEventListener('click', togglePlay);
-recordBtn.addEventListener('click', toggleRecording);
-volumeSlider.addEventListener('input', () => {
-  audio.volume = volumeSlider.value / 100;
-});
-searchInput.addEventListener('input', (e) => {
-  searchQuery = e.target.value.toLowerCase();
-  renderStations();
-});
-
 function getFilteredStations() {
-  if (!searchQuery) return STATIONS.map((s, i) => ({ ...s, index: i }));
-  return STATIONS.map((s, i) => ({ ...s, index: i }))
-    .filter(s => s.name.toLowerCase().includes(searchQuery) || s.genre.toLowerCase().includes(searchQuery));
+  if (!searchQuery) return STATIONS.map(function(s, i) { return { station: s, index: i }; });
+  return STATIONS.map(function(s, i) { return { station: s, index: i }; })
+    .filter(function(item) {
+      return item.station.name.toLowerCase().indexOf(searchQuery) >= 0 ||
+        (item.station.genre && item.station.genre.toLowerCase().indexOf(searchQuery) >= 0);
+    });
 }
 
 function renderStations() {
-  const filtered = getFilteredStations();
+  var filtered = getFilteredStations();
+  var html = '<div class="reorder-hint">Перетащите за \u2261 для изменения порядка</div>';
 
-  stationsList.innerHTML = `
-    <div class="reorder-hint">Перетащите за ≡ для изменения порядка</div>
-    ${filtered.map(s => `
-    <div class="station-card ${currentStation === s.index ? 'current' : ''}" data-index="${s.index}">
-      <div class="drag-handle">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg>
-      </div>
-      <div class="station-card-icon">${s.name.substring(0, 2).toUpperCase()}</div>
-      <div class="station-card-info">
-        <div class="station-card-name">${escapeHtml(s.name)}</div>
-        <div class="station-card-genre">${escapeHtml(s.genre || '')} ${s.bitrate ? s.bitrate + ' kbps' : ''}</div>
-      </div>
-      <div class="station-card-action">
-        ${currentStation === s.index && isPlaying
-          ? '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M6 6h12v12H6z"/></svg>'
-          : '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>'
-        }
-      </div>
-    </div>
-  `).join('')}`;
+  for (var i = 0; i < filtered.length; i++) {
+    var s = filtered[i].station;
+    var idx = filtered[i].index;
+    var isCurrent = currentStation === idx;
+    var iconText = s.name.substring(0, 2).toUpperCase();
+    var genreText = escapeHtml(s.genre || '');
+    var bitrateText = s.bitrate ? s.bitrate + ' kbps' : '';
+    var playSvg = (isCurrent && isPlaying)
+      ? '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M6 6h12v12H6z"/></svg>'
+      : '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
 
-  stationsList.querySelectorAll('.station-card').forEach(card => {
-    card.addEventListener('click', (e) => {
-      if (e.target.closest('.drag-handle')) return;
-      playStation(parseInt(card.dataset.index));
-    });
-  });
+    html += '<div class="station-card' + (isCurrent ? ' current' : '') + '" data-index="' + idx + '">'
+      + '<div class="drag-handle"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg></div>'
+      + '<div class="station-card-icon">' + iconText + '</div>'
+      + '<div class="station-card-info">'
+      + '<div class="station-card-name">' + escapeHtml(s.name) + '</div>'
+      + '<div class="station-card-genre">' + genreText + ' ' + bitrateText + '</div>'
+      + '</div>'
+      + '<div class="station-card-action">' + playSvg + '</div>'
+      + '</div>';
+  }
+
+  stationsList.innerHTML = html;
+
+  var cards = stationsList.querySelectorAll('.station-card');
+  for (var j = 0; j < cards.length; j++) {
+    (function(card) {
+      card.addEventListener('click', function(e) {
+        if (e.target.closest('.drag-handle')) return;
+        playStation(parseInt(card.dataset.index));
+      });
+    })(cards[j]);
+  }
 
   setupDragAndDrop();
 }
 
-function escapeHtml(text) {
-  const d = document.createElement('div');
-  d.textContent = text;
-  return d.innerHTML;
-}
-
-async function playStation(index) {
+function playStation(index) {
   if (isRecording) {
     showToast('Остановите запись перед сменой станции');
     return;
@@ -564,19 +400,31 @@ async function playStation(index) {
   currentStation = index;
   STATIONS[index]._proxyAttempt = 0;
 
-  try {
-    const ctx = ensureAudioCtx();
-    if (ctx.state === 'suspended') await ctx.resume();
-    audio.src = getProxiedUrl(STATIONS[index].url);
-    audio.load();
-    await audio.play();
+  var ctx = ensureAudioCtx();
+  if (ctx.state === 'suspended') {
+    ctx.resume();
+  }
+
+  audio.src = getProxiedUrl(STATIONS[index].url);
+  audio.load();
+
+  var playPromise = audio.play();
+  if (playPromise !== undefined) {
+    playPromise.then(function() {
+      playerBar.classList.add('active');
+      startBufferMonitor();
+      startMetadataReader();
+      updatePlayerUI();
+      renderStations();
+    }).catch(function() {
+      tryNextProxy();
+    });
+  } else {
     playerBar.classList.add('active');
     startBufferMonitor();
     startMetadataReader();
     updatePlayerUI();
     renderStations();
-  } catch (e) {
-    tryNextProxy();
   }
 }
 
@@ -586,7 +434,7 @@ function togglePlay() {
     audio.pause();
     stopBufferMonitor();
   } else {
-    audio.play();
+    audio.play().catch(function() {});
     startBufferMonitor();
   }
 }
@@ -610,7 +458,7 @@ function updatePlayerUI() {
   }
 }
 
-async function toggleRecording() {
+function toggleRecording() {
   if (isRecording) {
     stopRecording();
   } else {
@@ -618,23 +466,23 @@ async function toggleRecording() {
   }
 }
 
-async function startRecording() {
+function startRecording() {
   if (!isPlaying) {
     showToast('Сначала запустите воспроизведение');
     return;
   }
 
   try {
-    const ctx = ensureAudioCtx();
-    if (ctx.state === 'suspended') await ctx.resume();
+    var ctx = ensureAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
 
     if (!sourceNode) {
-      const originalUrl = STATIONS[currentStation].url;
-      const proxyUrl = getProxiedUrl(originalUrl);
+      var originalUrl = STATIONS[currentStation].url;
+      var proxyUrl = getProxiedUrl(originalUrl);
       audio.crossOrigin = 'anonymous';
       audio.src = proxyUrl;
       audio.load();
-      await audio.play();
+      audio.play().catch(function() {});
 
       sourceNode = ctx.createMediaElementSource(audio);
       destNode = ctx.createMediaStreamDestination();
@@ -642,24 +490,25 @@ async function startRecording() {
       sourceNode.connect(ctx.destination);
     }
 
-    const stream = destNode.stream;
-    mediaRecorder = new MediaRecorder(stream, {
-      mimeType: MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm'
-    });
+    var stream = destNode.stream;
+    var mimeType = 'audio/webm';
+    if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+      mimeType = 'audio/webm;codecs=opus';
+    }
+    mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
 
     audioChunks = [];
-    mediaRecorder.ondataavailable = (e) => {
+    mediaRecorder.ondataavailable = function(e) {
       if (e.data.size > 0) audioChunks.push(e.data);
     };
 
-    mediaRecorder.onstop = async () => {
-      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-      const stationName_ = STATIONS[currentStation]?.name || 'Unknown';
-      await saveRecording(blob, stationName_);
-      showToast('Запись сохранена');
-      renderRecordings();
+    mediaRecorder.onstop = function() {
+      var blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
+      var sName = currentStation >= 0 ? STATIONS[currentStation].name : 'Unknown';
+      saveRecording(blob, sName).then(function() {
+        showToast('Запись сохранена');
+        renderRecordings();
+      });
     };
 
     mediaRecorder.start(1000);
@@ -668,7 +517,6 @@ async function startRecording() {
 
     recordingBadge.classList.add('active');
     recordBtn.classList.add('recording');
-
     recordingTimer = setInterval(updateRecordingTime, 1000);
     showToast('Запись началась');
   } catch (e) {
@@ -681,7 +529,10 @@ function stopRecording() {
     mediaRecorder.stop();
   }
   isRecording = false;
-  clearInterval(recordingTimer);
+  if (recordingTimer) {
+    clearInterval(recordingTimer);
+    recordingTimer = null;
+  }
   recordingBadge.classList.remove('active');
   recordBtn.classList.remove('recording');
   recordingTime.textContent = '00:00';
@@ -689,96 +540,88 @@ function stopRecording() {
 
 function updateRecordingTime() {
   if (!recordingStartTime) return;
-  const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
-  const m = Math.floor(elapsed / 60).toString().padStart(2, '0');
-  const s = (elapsed % 60).toString().padStart(2, '0');
-  recordingTime.textContent = `${m}:${s}`;
+  var elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+  var m = Math.floor(elapsed / 60).toString().padStart(2, '0');
+  var s = (elapsed % 60).toString().padStart(2, '0');
+  recordingTime.textContent = m + ':' + s;
 }
-
-function showToast(msg) {
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(() => toast.classList.remove('show'), 2500);
-}
-
-const DB_NAME = 'RadioRecordings';
-const DB_VERSION = 1;
-const STORE_NAME = 'recordings';
 
 function openDB() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-    req.onupgradeneeded = (e) => {
-      const db = e.target.result;
-      if (!db.objectStoreNames.contains(STORE_NAME)) {
-        db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+  return new Promise(function(resolve, reject) {
+    var req = indexedDB.open('RadioRecordings', 1);
+    req.onupgradeneeded = function(e) {
+      var db = e.target.result;
+      if (!db.objectStoreNames.contains('recordings')) {
+        db.createObjectStore('recordings', { keyPath: 'id', autoIncrement: true });
       }
     };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    req.onsuccess = function() { resolve(req.result); };
+    req.onerror = function() { reject(req.error); };
   });
 }
 
-async function saveRecording(blob, station) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  tx.objectStore(STORE_NAME).add({
-    blob,
-    station,
-    date: new Date().toISOString(),
-    size: blob.size,
-    duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0,
-  });
-  return new Promise((resolve) => { tx.oncomplete = resolve; });
-}
-
-async function getRecordings() {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const req = tx.objectStore(STORE_NAME).getAll();
-  return new Promise((resolve) => {
-    req.onsuccess = () => resolve(req.result.reverse());
-    req.onerror = () => resolve([]);
+function saveRecording(blob, station) {
+  return openDB().then(function(db) {
+    var tx = db.transaction('recordings', 'readwrite');
+    tx.objectStore('recordings').add({
+      blob: blob,
+      station: station,
+      date: new Date().toISOString(),
+      size: blob.size,
+      duration: recordingStartTime ? Math.floor((Date.now() - recordingStartTime) / 1000) : 0
+    });
+    return new Promise(function(resolve) { tx.oncomplete = resolve; });
   });
 }
 
-async function deleteRecording(id) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readwrite');
-  tx.objectStore(STORE_NAME).delete(id);
-  return new Promise((resolve) => {
-    tx.oncomplete = () => {
-      showToast('Запись удалена');
-      renderRecordings();
-      resolve();
+function getRecordings() {
+  return openDB().then(function(db) {
+    var tx = db.transaction('recordings', 'readonly');
+    var req = tx.objectStore('recordings').getAll();
+    return new Promise(function(resolve) {
+      req.onsuccess = function() { resolve(req.result.reverse()); };
+      req.onerror = function() { resolve([]); };
+    });
+  });
+}
+
+function deleteRecording(id) {
+  return openDB().then(function(db) {
+    var tx = db.transaction('recordings', 'readwrite');
+    tx.objectStore('recordings').delete(id);
+    return new Promise(function(resolve) {
+      tx.oncomplete = function() {
+        showToast('Запись удалена');
+        renderRecordings();
+        resolve();
+      };
+    });
+  });
+}
+
+var currentRecordingAudio = null;
+
+function playRecording(id) {
+  openDB().then(function(db) {
+    var tx = db.transaction('recordings', 'readonly');
+    var req = tx.objectStore('recordings').get(id);
+    req.onsuccess = function() {
+      var rec = req.result;
+      if (!rec) return;
+
+      if (currentRecordingAudio) {
+        currentRecordingAudio.pause();
+        currentRecordingAudio = null;
+      }
+
+      if (isPlaying) audio.pause();
+
+      var url = URL.createObjectURL(rec.blob);
+      currentRecordingAudio = new Audio(url);
+      currentRecordingAudio.play();
+      showToast('Воспроизведение: ' + rec.station);
     };
   });
-}
-
-let currentRecordingAudio = null;
-
-async function playRecording(id) {
-  const db = await openDB();
-  const tx = db.transaction(STORE_NAME, 'readonly');
-  const req = tx.objectStore(STORE_NAME).get(id);
-  req.onsuccess = async () => {
-    const rec = req.result;
-    if (!rec) return;
-
-    if (currentRecordingAudio) {
-      currentRecordingAudio.pause();
-      currentRecordingAudio = null;
-    }
-
-    if (isPlaying) {
-      audio.pause();
-    }
-
-    const url = URL.createObjectURL(rec.blob);
-    currentRecordingAudio = new Audio(url);
-    currentRecordingAudio.play();
-    showToast('Воспроизведение: ' + rec.station);
-  };
 }
 
 function formatSize(bytes) {
@@ -788,70 +631,179 @@ function formatSize(bytes) {
 }
 
 function formatDuration(seconds) {
-  const m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  const s = (seconds % 60).toString().padStart(2, '0');
-  return `${m}:${s}`;
+  var m = Math.floor(seconds / 60).toString().padStart(2, '0');
+  var s = (seconds % 60).toString().padStart(2, '0');
+  return m + ':' + s;
 }
 
 function formatDate(iso) {
-  const d = new Date(iso);
+  var d = new Date(iso);
   return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) + ' ' +
     d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
 }
 
-async function renderRecordings() {
-  const recordings = await getRecordings();
+function renderRecordings() {
+  getRecordings().then(function(recordings) {
+    if (recordings.length === 0) {
+      emptyRecordings.style.display = 'flex';
+      var existing = recordingsList.querySelectorAll('.recording-card');
+      for (var k = 0; k < existing.length; k++) existing[k].remove();
+      return;
+    }
 
-  if (recordings.length === 0) {
-    emptyRecordings.style.display = 'flex';
-    recordingsList.querySelectorAll('.recording-card').forEach(c => c.remove());
-    return;
+    emptyRecordings.style.display = 'none';
+    var existing2 = recordingsList.querySelectorAll('.recording-card');
+    for (var k2 = 0; k2 < existing2.length; k2++) existing2[k2].remove();
+
+    var cardsHtml = '';
+    for (var i = 0; i < recordings.length; i++) {
+      var rec = recordings[i];
+      cardsHtml += '<div class="recording-card" data-id="' + rec.id + '">'
+        + '<div class="recording-card-icon"><svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg></div>'
+        + '<div class="recording-card-info">'
+        + '<div class="recording-card-name">' + escapeHtml(rec.station) + '</div>'
+        + '<div class="recording-card-meta">' + formatDate(rec.date) + ' | ' + formatDuration(rec.duration) + ' | ' + formatSize(rec.size) + '</div>'
+        + '</div>'
+        + '<div class="recording-card-actions">'
+        + '<button class="btn-play-rec" data-id="' + rec.id + '"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg></button>'
+        + '<button class="btn-delete" data-id="' + rec.id + '"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>'
+        + '</div></div>';
+    }
+
+    emptyRecordings.insertAdjacentHTML('afterend', cardsHtml);
+
+    var playBtns = recordingsList.querySelectorAll('.btn-play-rec');
+    for (var p = 0; p < playBtns.length; p++) {
+      (function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          playRecording(parseInt(btn.dataset.id));
+        });
+      })(playBtns[p]);
+    }
+
+    var delBtns = recordingsList.querySelectorAll('.btn-delete');
+    for (var d = 0; d < delBtns.length; d++) {
+      (function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          deleteRecording(parseInt(btn.dataset.id));
+        });
+      })(delBtns[d]);
+    }
+  });
+}
+
+var reorderMode = false;
+
+reorderBtn.addEventListener('click', function() {
+  reorderMode = !reorderMode;
+  reorderBtn.classList.toggle('active', reorderMode);
+  stationsPanel.classList.toggle('reorder-mode', reorderMode);
+  renderStations();
+});
+
+function saveStationOrder() {
+  var order = STATIONS.map(function(s) { return s.url; });
+  localStorage.setItem('stationOrder', JSON.stringify(order));
+}
+
+function loadStationOrder() {
+  var saved = localStorage.getItem('stationOrder');
+  if (!saved) return;
+  try {
+    var order = JSON.parse(saved);
+    var map = {};
+    STATIONS.forEach(function(s, i) { map[s.url] = i; });
+    var reordered = [];
+    order.forEach(function(url) {
+      if (map[url] !== undefined) reordered.push(STATIONS[map[url]]);
+    });
+    STATIONS.forEach(function(s) {
+      var found = false;
+      for (var i = 0; i < reordered.length; i++) {
+        if (reordered[i].url === s.url) { found = true; break; }
+      }
+      if (!found) reordered.push(s);
+    });
+    STATIONS.length = 0;
+    reordered.forEach(function(s) { STATIONS.push(s); });
+  } catch (_) {}
+}
+
+var dragSrcIndex = null;
+
+function setupDragAndDrop() {
+  var cards = stationsList.querySelectorAll('.station-card');
+  for (var c = 0; c < cards.length; c++) {
+    (function(card) {
+      var handle = card.querySelector('.drag-handle');
+      if (!handle) return;
+
+      handle.addEventListener('mousedown', function(e) {
+        dragSrcIndex = parseInt(card.dataset.index);
+        card.classList.add('dragging');
+        e.preventDefault();
+
+        function onMove(ev) {
+          var target = document.elementFromPoint(ev.clientX, ev.clientY);
+          var targetCard = target ? target.closest('.station-card') : null;
+          for (var i = 0; i < cards.length; i++) cards[i].classList.remove('drag-over');
+          if (targetCard && parseInt(targetCard.dataset.index) !== dragSrcIndex) {
+            targetCard.classList.add('drag-over');
+          }
+        }
+
+        function onUp(ev) {
+          document.removeEventListener('mousemove', onMove);
+          document.removeEventListener('mouseup', onUp);
+          var target = document.elementFromPoint(ev.clientX, ev.clientY);
+          var targetCard = target ? target.closest('.station-card') : null;
+          for (var i = 0; i < cards.length; i++) {
+            cards[i].classList.remove('dragging');
+            cards[i].classList.remove('drag-over');
+          }
+
+          if (targetCard) {
+            var targetIndex = parseInt(targetCard.dataset.index);
+            if (dragSrcIndex !== null && dragSrcIndex !== targetIndex) {
+              var item = STATIONS.splice(dragSrcIndex, 1)[0];
+              STATIONS.splice(targetIndex, 0, item);
+              if (currentStation === dragSrcIndex) currentStation = targetIndex;
+              else if (dragSrcIndex < currentStation && targetIndex >= currentStation) currentStation--;
+              else if (dragSrcIndex > currentStation && targetIndex <= currentStation) currentStation++;
+              saveStationOrder();
+              renderStations();
+            }
+          }
+          dragSrcIndex = null;
+        }
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
+      });
+    })(cards[c]);
   }
-
-  emptyRecordings.style.display = 'none';
-
-  const cardsHtml = recordings.map(rec => `
-    <div class="recording-card" data-id="${rec.id}">
-      <div class="recording-card-icon">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>
-      </div>
-      <div class="recording-card-info">
-        <div class="recording-card-name">${escapeHtml(rec.station)}</div>
-        <div class="recording-card-meta">${formatDate(rec.date)} | ${formatDuration(rec.duration)} | ${formatSize(rec.size)}</div>
-      </div>
-      <div class="recording-card-actions">
-        <button class="btn-play-rec" data-id="${rec.id}">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg>
-        </button>
-        <button class="btn-delete" data-id="${rec.id}">
-          <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
-        </button>
-      </div>
-    </div>
-  `).join('');
-
-  const existingCards = recordingsList.querySelectorAll('.recording-card');
-  existingCards.forEach(c => c.remove());
-  emptyRecordings.insertAdjacentHTML('afterend', cardsHtml);
-
-  recordingsList.querySelectorAll('.btn-play-rec').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      playRecording(parseInt(btn.dataset.id));
-    });
-  });
-
-  recordingsList.querySelectorAll('.btn-delete').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      deleteRecording(parseInt(btn.dataset.id));
-    });
-  });
 }
 
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('sw.js').catch(() => {});
-}
+document.querySelectorAll('.tab').forEach(function(tab) {
+  tab.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+    document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.remove('active'); });
+    tab.classList.add('active');
+    document.getElementById(tab.dataset.tab + 'Panel').classList.add('active');
+  });
+});
+
+playBtn.addEventListener('click', togglePlay);
+recordBtn.addEventListener('click', toggleRecording);
+volumeSlider.addEventListener('input', function() {
+  audio.volume = volumeSlider.value / 100;
+});
+searchInput.addEventListener('input', function(e) {
+  searchQuery = e.target.value.toLowerCase();
+  renderStations();
+});
 
 loadStationOrder();
 renderStations();
