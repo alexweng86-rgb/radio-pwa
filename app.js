@@ -122,9 +122,6 @@ function tryNextProxy() {
   }
   audio.play().catch(() => {});
 }
-  audio.play().catch(() => {});
-  startMetadataReader();
-}
 
 function updateBufferInfo() {
   if (!isPlaying && currentStation < 0) return;
