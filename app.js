@@ -1,28 +1,17 @@
 const CORS_PROXY = 'https://corsproxy.io/?';
 
 const STATIONS = [
-  { name: 'Chillhop Radio', url: 'https://stream.zeno.fm/0r0xa792kwzuv', genre: 'Lo-Fi', bitrate: 128 },
-  { name: 'Lofi Hip Hop', url: 'https://streams.illfacto.com/lofi', genre: 'Lo-Fi', bitrate: 128 },
-  { name: 'Jazz FM', url: 'https://jazz-am.streamguys1.com/live', genre: 'Jazz', bitrate: 128 },
-  { name: 'FIP', url: 'https://icecast.radiofrance.fr/fip-hifi.aac', genre: 'Eclectic', bitrate: 192 },
-  { name: 'FIP Jazz', url: 'https://icecast.radiofrance.fr/fipjazz-hifi.aac', genre: 'Jazz', bitrate: 192 },
-  { name: 'FIP Groove', url: 'https://icecast.radiofrance.fr/fipgroove-hifi.aac', genre: 'Funk / Soul', bitrate: 128 },
-  { name: 'FIP Reggae', url: 'https://icecast.radiofrance.fr/fipreggae-hifi.aac', genre: 'Reggae', bitrate: 128 },
-  { name: 'Nova Brazil', url: 'https://icecast.radiofrance.fr/nova-hifi.aac', genre: 'Brazilian', bitrate: 128 },
-  { name: 'Mouv Radio', url: 'https://icecast.radiofrance.fr/mouv-hifi.aac', genre: 'Hip-Hop', bitrate: 128 },
-  { name: 'BBC Radio 6 Music', url: 'https://stream.live.vc.bbcmedia.co.uk/bbc_6music', genre: 'Alternative', bitrate: 128 },
+  { name: 'Radio Paradise', url: 'http://stream.radioparadise.com/mp3-192', genre: 'Eclectic', bitrate: 192 },
   { name: 'KEXP Seattle', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie / Alt', bitrate: 128 },
-  { name: 'SBS Chill', url: 'https://sbs-ice.streamguys1.com/chill-128', genre: 'Chill', bitrate: 128 },
-  { name: 'NTS Radio 1', url: 'https://stream-relay-geo.ntslive.net/stream', genre: 'Eclectic', bitrate: 128 },
-  { name: 'SomaFM Drone Zone', url: 'https://somafm.com/dronezone130.mp3', genre: 'Ambient', bitrate: 130 },
-  { name: 'SomaFM Groove Salad', url: 'https://somafm.com/groovesalad130.mp3', genre: 'Chillout', bitrate: 130 },
-  { name: 'SomaFM DEF CON', url: 'https://somafm.com/defcon130.mp3', genre: 'Electronic', bitrate: 130 },
-  { name: 'Classic Rock Florida', url: 'https://ais-sa1.streamon.fm/7124_48k.aac', genre: 'Rock', bitrate: 48 },
-  { name: 'Radio Parallax', url: 'https://stream.zeno.fm/p7evu5b4khiuv', genre: 'Ambient', bitrate: 128 },
-  { name: 'Snazz FM', url: 'https://d3svlz1bsk84o.cloudfront.net/snazzfm.aac', genre: 'Pop / Dance', bitrate: 128 },
-  { name: 'Techno Workout', url: 'https://stream.zeno.fm/0x7r5mpn1i8uv', genre: 'Techno', bitrate: 128 },
-  { name: 'Futuro House', url: 'https://stream.zeno.fm/1m9fbpuu6mnkv', genre: 'House', bitrate: 128 },
-  { name: 'UK Garage', url: 'https://stream.zeno.fm/x5re2d4tmrbuv', genre: 'UK Garage', bitrate: 128 },
+  { name: 'SomaFM Groove Salad', url: 'https://ice1.somafm.com/groovesalad-128-mp3', genre: 'Chillout', bitrate: 128 },
+  { name: 'SomaFM Drone Zone', url: 'https://ice1.somafm.com/dronezone-128-mp3', genre: 'Ambient', bitrate: 128 },
+  { name: 'SomaFM DEF CON', url: 'https://ice1.somafm.com/defcon-128-mp3', genre: 'Electronic', bitrate: 128 },
+  { name: 'SomaFM Lush', url: 'https://ice1.somafm.com/lush-128-mp3', genre: 'Downtempo', bitrate: 128 },
+  { name: 'SomaFM Metal Detector', url: 'https://ice1.somafm.com/metal-128-mp3', genre: 'Metal', bitrate: 128 },
+  { name: 'SomaFM The InSound', url: 'https://ice1.somafm.com/insound-128-mp3', genre: 'Indie', bitrate: 128 },
+  { name: 'SomaFM 70s', url: 'https://ice1.somafm.com/seventies-128-mp3', genre: '70s', bitrate: 128 },
+  { name: 'Lofi Radio', url: 'https://play.streamafrica.net/lofiradio', genre: 'Lo-Fi', bitrate: 128 },
+  { name: 'RadioBoss', url: 'https://c14.radioboss.fm:8124/stream', genre: 'Pop / Dance', bitrate: 128 },
 ];
 
 let currentStation = -1;
@@ -67,7 +56,6 @@ const MIN_BUFFER_TO_PLAY = 2;
 let metadataAbort = null;
 let metadataTimer = null;
 
-audio.crossOrigin = 'anonymous';
 audio.preload = 'auto';
 audio.volume = volumeSlider.value / 100;
 
@@ -624,6 +612,13 @@ async function startRecording() {
     if (audioCtx.state === 'suspended') await audioCtx.resume();
 
     if (!sourceNode) {
+      const currentUrl = audio.src;
+      const proxyUrl = CORS_PROXY + encodeURIComponent(currentUrl);
+      audio.crossOrigin = 'anonymous';
+      audio.src = proxyUrl;
+      audio.load();
+      await audio.play();
+
       sourceNode = audioCtx.createMediaElementSource(audio);
       destNode = audioCtx.createMediaStreamDestination();
       sourceNode.connect(destNode);
