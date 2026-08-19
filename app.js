@@ -1,4 +1,5 @@
 const CORS_PROXY = 'https://corsproxy.io/?';
+const CORS_PROXY2 = 'https://api.allorigins.win/raw?url=';
 
 const STATIONS = [
   { name: 'Radio Paradise', url: 'http://stream.radioparadise.com/mp3-192', genre: 'Eclectic', bitrate: 192 },
@@ -13,6 +14,14 @@ const STATIONS = [
   { name: 'Lofi Radio', url: 'https://play.streamafrica.net/lofiradio', genre: 'Lo-Fi', bitrate: 128 },
   { name: 'RadioBoss', url: 'https://c14.radioboss.fm:8124/stream', genre: 'Pop / Dance', bitrate: 128 },
 ];
+
+function getProxiedUrl(url) {
+  return CORS_PROXY + encodeURIComponent(url);
+}
+
+function getProxiedUrl2(url) {
+  return CORS_PROXY2 + encodeURIComponent(url);
+}
 
 let currentStation = -1;
 let isPlaying = false;
@@ -94,9 +103,9 @@ function tryNextProxy() {
   s._proxyAttempt++;
 
   if (s._proxyAttempt === 1) {
-    audio.src = CORS_PROXY + encodeURIComponent(s.url);
+    audio.src = getProxiedUrl2(s.url);
   } else if (s._proxyAttempt === 2) {
-    audio.src = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(s.url);
+    audio.src = s.url;
   } else {
     showToast('Станция недоступна');
     s._proxyAttempt = 0;
@@ -104,6 +113,8 @@ function tryNextProxy() {
     bufferInfo.classList.remove('active');
     return;
   }
+  audio.play().catch(() => {});
+}
   audio.play().catch(() => {});
   startMetadataReader();
 }
@@ -551,7 +562,7 @@ async function playStation(index) {
 
   try {
     if (audioCtx.state === 'suspended') await audioCtx.resume();
-    audio.src = STATIONS[index].url;
+    audio.src = getProxiedUrl(STATIONS[index].url);
     audio.load();
     await audio.play();
     playerBar.classList.add('active');
