@@ -11,6 +11,7 @@ let audio = new Audio();
 let mediaRecorder = null;
 let audioChunks = [];
 let searchQuery = '';
+let bufferMonitorTimer = null;
 
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 let sourceNode = null;
@@ -32,8 +33,15 @@ const recordingsList = document.getElementById('recordingsList');
 const emptyRecordings = document.getElementById('emptyRecordings');
 const searchInput = document.getElementById('searchInput');
 const toast = document.getElementById('toast');
+const bufferInfo = document.getElementById('bufferInfo');
+const bufferBarFill = document.getElementById('bufferBarFill');
+const bufferText = document.getElementById('bufferText');
+
+const TARGET_BUFFER = 60;
+const MIN_BUFFER_TO_PLAY = 2;
 
 audio.crossOrigin = 'anonymous';
+audio.preload = 'auto';
 audio.volume = volumeSlider.value / 100;
 
 audio.addEventListener('playing', () => {
@@ -44,6 +52,18 @@ audio.addEventListener('playing', () => {
 audio.addEventListener('pause', () => {
   isPlaying = false;
   updatePlayerUI();
+});
+
+audio.addEventListener('waiting', () => {
+  bufferBarFill.classList.add('loading');
+  bufferBarFill.classList.remove('loading');
+  bufferText.textContent = 'Буферизация...';
+  bufferInfo.classList.add('active');
+});
+
+audio.addEventListener('canplay', () => {
+  updateBufferInfo();
+  bufferBarFill.classList.remove('loading');
 });
 
 audio.addEventListener('error', (e) => {
@@ -69,6 +89,47 @@ function tryNextProxy() {
     return;
   }
   audio.play().catch(() => {});
+}
+
+function updateBufferInfo() {
+  if (!isPlaying && currentStation < 0) return;
+  const buffered = getBufferedSeconds();
+  const pct = Math.min(100, (buffered / TARGET_BUFFER) * 100);
+  bufferBarFill.style.width = pct + '%';
+  bufferBarFill.classList.remove('loading');
+  bufferInfo.classList.add('active');
+
+  if (buffered < MIN_BUFFER_TO_PLAY) {
+    bufferText.textContent = `Буфер: ${buffered.toFixed(0)}с — загрузка...`;
+    bufferBarFill.classList.add('loading');
+  } else if (buffered >= TARGET_BUFFER) {
+    bufferText.textContent = `Буфер: ${buffered.toFixed(0)}с — стабильно`;
+  } else {
+    bufferText.textContent = `Буфер: ${buffered.toFixed(0)}с / ${TARGET_BUFFER}с`;
+  }
+}
+
+function getBufferedSeconds() {
+  if (!audio.buffered.length || !audio.duration) return 0;
+  const current = audio.currentTime;
+  for (let i = 0; i < audio.buffered.length; i++) {
+    if (audio.buffered.start(i) <= current && audio.buffered.end(i) >= current) {
+      return audio.buffered.end(i) - current;
+    }
+  }
+  return 0;
+}
+
+function startBufferMonitor() {
+  stopBufferMonitor();
+  bufferMonitorTimer = setInterval(updateBufferInfo, 500);
+}
+
+function stopBufferMonitor() {
+  if (bufferMonitorTimer) {
+    clearInterval(bufferMonitorTimer);
+    bufferMonitorTimer = null;
+  }
 }
 
 document.querySelectorAll('.tab').forEach(tab => {
@@ -175,10 +236,17 @@ async function playStation(index) {
     audio.src = '';
     currentStation = -1;
     isPlaying = false;
+    stopBufferMonitor();
+    bufferInfo.classList.remove('active');
     updatePlayerUI();
     renderStations();
     return;
   }
+
+  stopBufferMonitor();
+  bufferBarFill.classList.add('loading');
+  bufferText.textContent = 'Подключение...';
+  bufferInfo.classList.add('active');
 
   currentStation = index;
   stations[index]._proxyAttempt = 0;
@@ -186,8 +254,10 @@ async function playStation(index) {
   try {
     if (audioCtx.state === 'suspended') await audioCtx.resume();
     audio.src = stations[index].url;
+    audio.load();
     await audio.play();
     playerBar.classList.add('active');
+    startBufferMonitor();
     updatePlayerUI();
     renderStations();
   } catch (e) {
@@ -199,8 +269,10 @@ function togglePlay() {
   if (currentStation < 0) return;
   if (isPlaying) {
     audio.pause();
+    stopBufferMonitor();
   } else {
     audio.play();
+    startBufferMonitor();
   }
 }
 
