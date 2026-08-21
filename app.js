@@ -1,7 +1,12 @@
 var CORS_PROXY = 'https://corsproxy.io/?';
 
 var STATIONS = [
-  { name: 'KEXP Seattle', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie / Alt', bitrate: 128 },
+  { name: 'SomaFM Beat Blender', url: 'https://ice1.somafm.com/beatblender-128-mp3', genre: 'Deep House', bitrate: 128 },
+  { name: 'SomaFM The Trip', url: 'https://ice1.somafm.com/thetrip-128-mp3', genre: 'Progressive House / Trance', bitrate: 128 },
+  { name: 'SomaFM Dubstep Beyond', url: 'https://ice1.somafm.com/dubstep-128-mp3', genre: 'Drum & Bass / Dubstep', bitrate: 128 },
+  { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128 },
+  { name: 'SomaFM Space Station Soma', url: 'https://ice1.somafm.com/spacestation-128-mp3', genre: 'Melodic Electronica', bitrate: 128 },
+  { name: 'SomaFM cliqhop idm', url: 'https://ice1.somafm.com/cliqhop-128-mp3', genre: 'IDM / Melodic', bitrate: 128 },
   { name: 'SomaFM Groove Salad', url: 'https://ice1.somafm.com/groovesalad-128-mp3', genre: 'Chillout', bitrate: 128 },
   { name: 'SomaFM Drone Zone', url: 'https://ice1.somafm.com/dronezone-128-mp3', genre: 'Ambient', bitrate: 128 },
   { name: 'SomaFM DEF CON', url: 'https://ice1.somafm.com/defcon-128-mp3', genre: 'Electronic', bitrate: 128 },
@@ -9,6 +14,7 @@ var STATIONS = [
   { name: 'SomaFM Metal Detector', url: 'https://ice1.somafm.com/metal-128-mp3', genre: 'Metal', bitrate: 128 },
   { name: 'SomaFM The InSound', url: 'https://ice1.somafm.com/insound-128-mp3', genre: 'Indie', bitrate: 128 },
   { name: 'SomaFM 70s', url: 'https://ice1.somafm.com/seventies-128-mp3', genre: '70s', bitrate: 128 },
+  { name: 'KEXP Seattle', url: 'https://kexp-mp3-128.streamguys1.com/kexp128.mp3', genre: 'Indie / Alt', bitrate: 128 },
   { name: 'RadioBoss', url: 'https://c14.radioboss.fm:8124/stream', genre: 'Pop / Dance', bitrate: 128 }
 ];
 
