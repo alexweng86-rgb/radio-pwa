@@ -1,4 +1,4 @@
-var CACHE_NAME = 'radio-pwa-v5';
+var CACHE_NAME = 'dnb-radio-v1';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

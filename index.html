@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1a1a2e">
+  <meta name="theme-color" content="#0a0a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
-  <title>Online Radio</title>
+  <title>DnB Radio</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.svg">
@@ -19,10 +19,10 @@
   <div id="app">
     <header>
       <div class="header-left">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="currentColor" width="24" height="24">
-          <path d="M12 3v10.55A4 4 0 1 0 14 17V7h4V3h-6z"/>
+        <svg class="logo-icon" viewBox="0 0 24 24" fill="currentColor" width="26" height="26">
+          <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/>
         </svg>
-        <h1>Online Radio</h1>
+        <h1>DnB Radio</h1>
       </div>
       <div class="header-right">
         <div class="recording-badge" id="recordingBadge">
@@ -39,7 +39,7 @@
       <div class="player-info">
         <div class="station-icon" id="stationIcon">
           <svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28">
-            <path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34-.37-.91L3.24 6.15zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h2v2z"/>
+            <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/>
           </svg>
         </div>
         <div class="station-text">
@@ -85,11 +85,11 @@
 
     <div class="tabs">
       <button class="tab active" data-tab="stations">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M3.24 6.15C2.51 6.43 2 7.17 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8c0-1.11-.89-2-2-2H8.3l8.26-3.34-.37-.91L3.24 6.15zM7 20a3 3 0 1 1 0-6 3 3 0 0 1 0 6zm13-8h-2v-2h2v2z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/></svg>
         Станции
       </button>
       <button class="tab" data-tab="recordings">
-        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15a.998.998 0 0 0-.98-.85c-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08a6.993 6.993 0 0 0 5.91-5.78c.1-.6-.39-1.14-1-1.14z"/></svg>
+        <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/><circle cx="12" cy="17" r="4"/></svg>
         Записи
       </button>
       <button class="tab-btn" id="reorderBtn" title="Изменить порядок">
@@ -108,8 +108,8 @@
       <div class="tab-panel" id="recordingsPanel">
         <div class="recordings-list" id="recordingsList">
           <div class="empty-state" id="emptyRecordings">
-            <svg viewBox="0 0 24 24" fill="currentColor" width="64" height="64" style="opacity:0.2">
-              <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.91-3c-.49 0-.9.36-.98.85C16.52 14.2 14.47 16 12 16s-4.52-1.8-4.93-4.15a.998.998 0 0 0-.98-.85c-.61 0-1.09.54-1 1.14.49 3 2.89 5.35 5.91 5.78V20c0 .55.45 1 1 1s1-.45 1-1v-2.08a6.993 6.993 0 0 0 5.91-5.78c.1-.6-.39-1.14-1-1.14z"/>
+            <svg viewBox="0 0 24 24" fill="currentColor" width="64" height="64" style="opacity:0.15">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/>
             </svg>
             <p>Нет записей</p>
             <p class="hint">Запускайте радио и нажимайте кнопку записи</p>
@@ -145,6 +145,6 @@
     </div>
   </div>
 
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>

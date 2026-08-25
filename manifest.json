@@ -1,7 +1,7 @@
 {
-  "name": "Online Radio",
-  "short_name": "Radio",
-  "description": "Online radio player with recording",
+  "name": "DnB Radio",
+  "short_name": "DnB Radio",
+  "description": "Drum and Bass radio player with recording",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0f0f1a",
