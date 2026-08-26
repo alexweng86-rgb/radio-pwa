@@ -572,7 +572,9 @@ function saveRecordingToDir(blob, station) {
     return writable.write(blob).then(function() {
       return writable.close();
     });
-  }).catch(function() {
+  }).catch(function(e) {
+    console.warn('Folder save failed, falling back to DB:', e);
+    showToast('\u041f\u0430\u043f\u043a\u0430 \u043d\u0435\u0434\u043e\u0441\u0442\u0443\u043f\u043d\u0430, \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u043e \u0432 \u043f\u0430\u043c\u044f\u0442\u044c');
     return saveRecordingToDB(blob, station);
   });
 }
@@ -599,6 +601,25 @@ function getRecordings() {
       req.onsuccess = function() { resolve(req.result.reverse()); };
       req.onerror = function() { resolve([]); };
     });
+  });
+}
+
+function downloadRecording(id) {
+  openDB().then(function(db) {
+    var tx = db.transaction('recordings', 'readonly');
+    var req = tx.objectStore('recordings').get(id);
+    req.onsuccess = function() {
+      var rec = req.result;
+      if (!rec) return;
+      var url = URL.createObjectURL(rec.blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'radio-' + rec.station.replace(/[^a-zA-Z0-9]/g, '_') + '-' + rec.date.replace(/[:.]/g, '-') + '.webm';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    };
   });
 }
 
@@ -748,6 +769,7 @@ function renderRecordings() {
         + '</div>'
         + '<div class="recording-card-actions">'
         + '<button class="btn-play-rec" data-id="' + rec.id + '"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg></button>'
+        + '<button class="btn-download-rec" data-id="' + rec.id + '" title="\u0421\u043a\u0430\u0447\u0430\u0442\u044c \u0444\u0430\u0439\u043b"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></button>'
         + '<button class="btn-delete" data-id="' + rec.id + '"><svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M6 19c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>'
         + '</div></div>';
     }
@@ -772,6 +794,16 @@ function renderRecordings() {
           deleteRecording(parseInt(btn.dataset.id));
         });
       })(delBtns[d]);
+    }
+
+    var dlBtns = recordingsList.querySelectorAll('.btn-download-rec');
+    for (var dl = 0; dl < dlBtns.length; dl++) {
+      (function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.stopPropagation();
+          downloadRecording(parseInt(btn.dataset.id));
+        });
+      })(dlBtns[dl]);
     }
   });
 }
