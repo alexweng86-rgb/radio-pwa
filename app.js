@@ -1,4 +1,4 @@
-var CORS_PROXY = 'https://corsproxy.io/?';
+﻿var CORS_PROXY = 'https://corsproxy.io/?';
 
 var STATIONS = [
   { name: 'Pirate Station', url: 'https://radiorecord.hostingradio.ru/ps96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2016/02/359_the_radio_ru_nbkcvbx.webp', gradient: ['#1a0a2e', '#0f3460'] },
@@ -283,10 +283,7 @@ function renderStations() {
       ? '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M6 6h12v12H6z"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
 
-    var cardStyle = '';
-    if (s.gradient) {
-      cardStyle = ' style="background: linear-gradient(135deg, ' + s.gradient[0] + ', ' + s.gradient[1] + '); border-color: ' + s.gradient[1] + '40;"';
-    }
+    var cardStyle = s.gradient ? ' style="background:linear-gradient(135deg,' + s.gradient[0] + ',' + s.gradient[1] + ');border-color:' + s.gradient[1] + '40"' : '';
 
     html += '<div class="station-card' + (isCurrent ? ' current' : '') + '" data-index="' + idx + '"' + cardStyle + '>'
       + '<div class="drag-handle"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg></div>'
@@ -354,6 +351,11 @@ function playStation(index) {
     currentRecordingAudio.pause();
     currentRecordingAudio.src = '';
     currentRecordingAudio = null;
+  }
+
+  var ctx = ensureAudioCtx();
+  if (ctx.state === 'suspended') {
+    ctx.resume();
   }
 
   audio.pause();
@@ -432,7 +434,6 @@ function updatePlayerUI() {
       playerBar.style.borderColor = '';
     }
 
-    var s = STATIONS[currentStation];
     if (s.icon) {
       stationIcon.innerHTML = '<img src="' + escapeHtml(s.icon) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28" style="display:none"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/></svg>';
     } else {
@@ -459,7 +460,8 @@ function toggleRecording() {
   }
 }
 
-var recFallbackAudio = null;
+var recDestNode = null;
+var mainSourceNode = null;
 
 function startRecording() {
   if (!isPlaying) {
@@ -468,17 +470,15 @@ function startRecording() {
   }
 
   try {
-    var captureFn = audio.captureStream || audio.mozCaptureStream;
-    if (!captureFn) {
-      showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435');
-      return;
+    var ctx = ensureAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
+    if (!mainSourceNode) {
+      mainSourceNode = ctx.createMediaElementSource(audio);
+      mainSourceNode.connect(ctx.destination);
     }
-
-    recFallbackAudio = new Audio(audio.src);
-    recFallbackAudio.crossOrigin = 'anonymous';
-    recFallbackAudio.volume = 1;
-    recFallbackAudio.play().catch(function() {});
-    var stream = captureFn.call(recFallbackAudio);
+    recDestNode = ctx.createMediaStreamDestination();
+    mainSourceNode.connect(recDestNode);
+    var stream = recDestNode.stream;
 
     var mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -517,10 +517,9 @@ function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
-  if (recFallbackAudio) {
-    recFallbackAudio.pause();
-    recFallbackAudio.src = '';
-    recFallbackAudio = null;
+  if (recDestNode && mainSourceNode) {
+    try { mainSourceNode.disconnect(recDestNode); } catch (_) {}
+    recDestNode = null;
   }
   isRecording = false;
   if (recordingTimer) {
