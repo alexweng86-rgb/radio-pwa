@@ -463,7 +463,6 @@ function toggleRecording() {
 var recDestNode = null;
 var mainSourceNode = null;
 var playbackGain = null;
-var recAudio = null;
 
 function startRecording() {
   if (!isPlaying) {
@@ -476,11 +475,7 @@ function startRecording() {
 
     var captureFn = audio.captureStream || audio.mozCaptureStream;
     if (captureFn) {
-      recAudio = new Audio(audio.src);
-      recAudio.crossOrigin = 'anonymous';
-      recAudio.volume = 1;
-      recAudio.play().catch(function() {});
-      stream = captureFn.call(recAudio);
+      stream = captureFn.call(audio);
     } else {
       var ctx = ensureAudioCtx();
       if (ctx.state === 'suspended') ctx.resume();
@@ -533,11 +528,6 @@ function startRecording() {
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
-  }
-  if (recAudio) {
-    recAudio.pause();
-    recAudio.src = '';
-    recAudio = null;
   }
   if (recDestNode && mainSourceNode) {
     try { mainSourceNode.disconnect(recDestNode); } catch (_) {}
