@@ -353,11 +353,6 @@ function playStation(index) {
     currentRecordingAudio = null;
   }
 
-  var ctx = ensureAudioCtx();
-  if (ctx.state === 'suspended') {
-    ctx.resume();
-  }
-
   audio.pause();
   audio.src = STATIONS[index].url;
   audio.load();
@@ -464,6 +459,18 @@ var recDestNode = null;
 var mainSourceNode = null;
 var playbackGain = null;
 
+function ensurePlaybackGraph() {
+  if (mainSourceNode) return;
+  var ctx = ensureAudioCtx();
+  if (ctx.state === 'suspended') ctx.resume();
+  mainSourceNode = ctx.createMediaElementSource(audio);
+  audio.volume = 1;
+  playbackGain = ctx.createGain();
+  playbackGain.gain.value = volumeSlider.value / 100;
+  mainSourceNode.connect(playbackGain);
+  playbackGain.connect(ctx.destination);
+}
+
 function startRecording() {
   if (!isPlaying) {
     showToast('\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435');
@@ -471,32 +478,23 @@ function startRecording() {
   }
 
   try {
-    var stream = null;
+    ensurePlaybackGraph();
+    var ctx = ensureAudioCtx();
+    recDestNode = ctx.createMediaStreamDestination();
+    mainSourceNode.connect(recDestNode);
+    var stream = recDestNode.stream;
 
-    var captureFn = audio.captureStream || audio.mozCaptureStream;
-    if (captureFn) {
-      stream = captureFn.call(audio);
-    } else {
-      var ctx = ensureAudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
-      if (!mainSourceNode) {
-        mainSourceNode = ctx.createMediaElementSource(audio);
-        audio.volume = 1;
-        playbackGain = ctx.createGain();
-        playbackGain.gain.value = volumeSlider.value / 100;
-        mainSourceNode.connect(playbackGain);
-        playbackGain.connect(ctx.destination);
-      }
-      recDestNode = ctx.createMediaStreamDestination();
-      mainSourceNode.connect(recDestNode);
-      stream = recDestNode.stream;
-    }
-
-    var mimeType = 'audio/webm';
+    var mimeType = '';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
       mimeType = 'audio/webm;codecs=opus';
+    } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+      mimeType = 'audio/webm';
+    } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+      mimeType = 'audio/mp4';
+    } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+      mimeType = 'audio/ogg;codecs=opus';
     }
-    mediaRecorder = new MediaRecorder(stream, { mimeType: mimeType });
+    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : undefined);
 
     audioChunks = [];
     mediaRecorder.ondataavailable = function(e) {
