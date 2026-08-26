@@ -74,6 +74,7 @@ function showToast(msg) {
 }
 
 audio.preload = 'auto';
+audio.crossOrigin = 'anonymous';
 audio.volume = volumeSlider.value / 100;
 
 audio.addEventListener('playing', function() {
@@ -423,13 +424,6 @@ function startRecording() {
     if (ctx.state === 'suspended') ctx.resume();
 
     if (!sourceNode) {
-      var originalUrl = STATIONS[currentStation].url;
-      var proxyUrl = CORS_PROXY + encodeURIComponent(originalUrl);
-      audio.crossOrigin = 'anonymous';
-      audio.src = proxyUrl;
-      audio.load();
-      audio.play().catch(function() {});
-
       sourceNode = ctx.createMediaElementSource(audio);
       destNode = ctx.createMediaStreamDestination();
       sourceNode.connect(destNode);
