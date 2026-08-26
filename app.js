@@ -442,7 +442,9 @@ function startRecording() {
       stream = audio.captureStream();
     } else if (audio.mozCaptureStream) {
       stream = audio.mozCaptureStream();
-    } else {
+    }
+
+    if (!stream || !stream.active || (stream.getAudioTracks && stream.getAudioTracks().length === 0)) {
       var ctx = ensureAudioCtx();
       if (ctx.state === 'suspended') ctx.resume();
       if (!recAudio) {
