@@ -460,6 +460,18 @@ function toggleRecording() {
 }
 
 var recFallbackAudio = null;
+var recSourceNode = null;
+var recDestNode = null;
+var recGainNode = null;
+
+function setVolume(val) {
+  if (recSourceNode && recGainNode) {
+    recGainNode.gain.value = val;
+  } else {
+    audio.volume = val;
+  }
+  if (currentRecordingAudio) currentRecordingAudio.volume = val;
+}
 
 function startRecording() {
   if (!isPlaying) {
@@ -468,18 +480,33 @@ function startRecording() {
   }
 
   try {
-    if (!audio.captureStream && !audio.mozCaptureStream) {
-      showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435');
-      return;
-    }
-
-    recFallbackAudio = new Audio(audio.src);
-    recFallbackAudio.crossOrigin = 'anonymous';
-    recFallbackAudio.volume = 1;
-    recFallbackAudio.play().catch(function() {});
-
+    var stream = null;
     var captureFn = audio.captureStream || audio.mozCaptureStream;
-    var stream = captureFn.call(recFallbackAudio);
+
+    if (captureFn) {
+      recFallbackAudio = new Audio(audio.src);
+      recFallbackAudio.crossOrigin = 'anonymous';
+      recFallbackAudio.volume = 1;
+      recFallbackAudio.play().catch(function() {});
+      stream = captureFn.call(recFallbackAudio);
+    } else {
+      var ctx = ensureAudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      if (!recSourceNode) {
+        recSourceNode = ctx.createMediaElementSource(audio);
+        audio.volume = 1;
+        recGainNode = ctx.createGain();
+        recGainNode.gain.value = volumeSlider.value / 100;
+        recSourceNode.connect(recGainNode);
+        recGainNode.connect(ctx.destination);
+      }
+      if (recDestNode) {
+        try { recSourceNode.disconnect(recDestNode); } catch (_) {}
+      }
+      recDestNode = ctx.createMediaStreamDestination();
+      recSourceNode.connect(recDestNode);
+      stream = recDestNode.stream;
+    }
 
     var mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -522,6 +549,11 @@ function stopRecording() {
     recFallbackAudio.pause();
     recFallbackAudio.src = '';
     recFallbackAudio = null;
+  }
+  if (recDestNode && recSourceNode) {
+    try { recSourceNode.disconnect(recDestNode); } catch (_) {}
+    try { recSourceNode.disconnect(audioCtx.destination); } catch (_) {}
+    recDestNode = null;
   }
   isRecording = false;
   if (recordingTimer) {
@@ -900,7 +932,7 @@ function loadSettings() {
   try {
     var s = JSON.parse(saved);
     if (s.volume !== undefined) {
-      audio.volume = s.volume / 100;
+      setVolume(s.volume / 100);
       volumeSlider.value = s.volume;
     }
   } catch (_) {}
@@ -957,8 +989,7 @@ settingsResetFolder.addEventListener('click', function() {
 });
 
 settingsVolume.addEventListener('input', function() {
-  audio.volume = settingsVolume.value / 100;
-  if (currentRecordingAudio) currentRecordingAudio.volume = settingsVolume.value / 100;
+  setVolume(settingsVolume.value / 100);
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
   s.volume = parseInt(settingsVolume.value);
@@ -966,8 +997,7 @@ settingsVolume.addEventListener('input', function() {
 });
 
 volumeSlider.addEventListener('input', function() {
-  audio.volume = volumeSlider.value / 100;
-  if (currentRecordingAudio) currentRecordingAudio.volume = volumeSlider.value / 100;
+  setVolume(volumeSlider.value / 100);
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
   s.volume = parseInt(volumeSlider.value);
