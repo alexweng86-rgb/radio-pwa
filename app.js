@@ -459,8 +459,9 @@ function ensureMainSource() {
   if (mainSourceNode) return;
   var ctx = ensureAudioCtx();
   mainSourceNode = ctx.createMediaElementSource(audio);
+  audio.volume = 1;
   gainNode = ctx.createGain();
-  gainNode.gain.value = audio.volume;
+  gainNode.gain.value = volumeSlider.value / 100;
   mainSourceNode.connect(gainNode);
   gainNode.connect(ctx.destination);
 }
@@ -886,7 +887,11 @@ function loadSettings() {
   try {
     var s = JSON.parse(saved);
     if (s.volume !== undefined) {
-      audio.volume = s.volume / 100;
+      if (gainNode) {
+        gainNode.gain.value = s.volume / 100;
+      } else {
+        audio.volume = s.volume / 100;
+      }
       volumeSlider.value = s.volume;
     }
   } catch (_) {}
@@ -943,8 +948,7 @@ settingsResetFolder.addEventListener('click', function() {
 });
 
 settingsVolume.addEventListener('input', function() {
-  audio.volume = settingsVolume.value / 100;
-  if (gainNode) gainNode.gain.value = audio.volume;
+  if (gainNode) gainNode.gain.value = settingsVolume.value / 100;
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
   s.volume = parseInt(settingsVolume.value);
@@ -952,8 +956,7 @@ settingsVolume.addEventListener('input', function() {
 });
 
 volumeSlider.addEventListener('input', function() {
-  audio.volume = volumeSlider.value / 100;
-  if (gainNode) gainNode.gain.value = audio.volume;
+  if (gainNode) gainNode.gain.value = volumeSlider.value / 100;
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
   s.volume = parseInt(volumeSlider.value);
