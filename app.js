@@ -1,16 +1,16 @@
 var CORS_PROXY = 'https://corsproxy.io/?';
 
 var STATIONS = [
-  { name: 'Pirate Station', url: 'https://radiorecord.hostingradio.ru/ps96.aacp', genre: 'DnB / Radio Record', bitrate: 96 },
-  { name: "D'n'B Hits", url: 'https://radiorecord.hostingradio.ru/drumhits96.aacp', genre: 'DnB / Radio Record', bitrate: 96 },
-  { name: 'Neurofunk', url: 'https://radiorecord.hostingradio.ru/neurofunk96.aacp', genre: 'DnB Neurofunk / Radio Record', bitrate: 96 },
-  { name: 'Darkside', url: 'https://radiorecord.hostingradio.ru/darkside96.aacp', genre: 'DnB Darkside / Radio Record', bitrate: 96 },
-  { name: 'DnBRadio', url: 'https://fw.dnbradio.com/dnbradio_main.mp3', genre: 'DnB', bitrate: 320 },
-  { name: 'DNB FM', url: 'https://air.dnbfm.ru/listen/player/play', genre: 'DnB / Liquid', bitrate: 128 },
+  { name: 'Pirate Station', url: 'https://radiorecord.hostingradio.ru/ps96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
+  { name: "D'n'B Hits", url: 'https://radiorecord.hostingradio.ru/drumhits96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
+  { name: 'Neurofunk', url: 'https://radiorecord.hostingradio.ru/neurofunk96.aacp', genre: 'DnB Neurofunk / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
+  { name: 'Darkside', url: 'https://radiorecord.hostingradio.ru/darkside96.aacp', genre: 'DnB Darkside / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
+  { name: 'DnBRadio', url: 'https://fw.dnbradio.com/dnbradio_main.mp3', genre: 'DnB', bitrate: 320, icon: 'https://dnbradio.com/images/dnbradio_sq.png' },
+  { name: 'DNB FM', url: 'https://air.dnbfm.ru/listen/player/play', genre: 'DnB / Liquid', bitrate: 128, icon: 'https://dnbfm.ru/static/icons/production/favicon-32x32.png' },
   { name: 'BedlamDnB', url: 'https://c11.radioboss.fm:8318/stream', genre: 'DnB', bitrate: 128 },
-  { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128 },
+  { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128, icon: 'https://somafm.com/logos/120/fluid120.jpg' },
   { name: 'Sky Plus DnB', url: 'https://edge03.cdn.bitflip.ee:8888/NRJdnb', genre: 'DnB / Dance', bitrate: 256 },
-  { name: 'DnB & EDM', url: 'https://edmdnb.com:448/radio/8000/radio.mp3', genre: 'DnB / EDM', bitrate: 128 }
+  { name: 'DnB & EDM', url: 'https://edmdnb.com:448/radio/8000/radio.mp3', genre: 'DnB / EDM', bitrate: 128, icon: 'https://edmdnb.com/images/favicon.ico' }
 ];
 
 var currentStation = -1;
@@ -274,7 +274,9 @@ function renderStations() {
     var s = filtered[i].station;
     var idx = filtered[i].index;
     var isCurrent = currentStation === idx;
-    var iconText = s.name.substring(0, 2).toUpperCase();
+    var iconContent = s.icon
+      ? '<img src="' + escapeHtml(s.icon) + '" alt="' + escapeHtml(s.name) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'"><span style="display:none">' + s.name.substring(0, 2).toUpperCase() + '</span>'
+      : s.name.substring(0, 2).toUpperCase();
     var genreText = escapeHtml(s.genre || '');
     var bitrateText = s.bitrate ? s.bitrate + ' kbps' : '';
     var playSvg = (isCurrent && isPlaying)
@@ -283,7 +285,7 @@ function renderStations() {
 
     html += '<div class="station-card' + (isCurrent ? ' current' : '') + '" data-index="' + idx + '">'
       + '<div class="drag-handle"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg></div>'
-      + '<div class="station-card-icon">' + iconText + '</div>'
+      + '<div class="station-card-icon">' + iconContent + '</div>'
       + '<div class="station-card-info">'
       + '<div class="station-card-name">' + escapeHtml(s.name) + '</div>'
       + '<div class="station-card-genre">' + genreText + ' ' + bitrateText + '</div>'
@@ -396,6 +398,13 @@ function updatePlayerUI() {
     stationGenre.textContent = STATIONS[currentStation].genre || '';
     playBtn.disabled = false;
     recordBtn.disabled = false;
+
+    var s = STATIONS[currentStation];
+    if (s.icon) {
+      stationIcon.innerHTML = '<img src="' + escapeHtml(s.icon) + '" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:6px" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28" style="display:none"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/></svg>';
+    } else {
+      stationIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/></svg>';
+    }
   }
 
   if (isPlaying) {
