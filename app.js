@@ -315,6 +315,13 @@ function playStation(index) {
     return;
   }
 
+  if (currentRecordingAudio) {
+    currentRecordingAudio.pause();
+    currentRecordingAudio.src = '';
+    currentRecordingAudio = null;
+    currentRecordingId = null;
+  }
+
   if (currentStation === index && isPlaying) {
     audio.pause();
     audio.src = '';
@@ -382,6 +389,21 @@ function playStation(index) {
 }
 
 function togglePlay() {
+  if (currentRecordingAudio && !currentRecordingAudio.paused) {
+    currentRecordingAudio.pause();
+    playerBar.classList.add('active');
+    playIcon.style.display = 'block';
+    stopIcon.style.display = 'none';
+    stationIcon.classList.remove('playing');
+    return;
+  }
+  if (currentRecordingAudio && currentRecordingAudio.paused) {
+    currentRecordingAudio.play();
+    playIcon.style.display = 'none';
+    stopIcon.style.display = 'block';
+    stationIcon.classList.add('playing');
+    return;
+  }
   if (currentStation < 0) return;
   if (isPlaying) {
     audio.pause();
@@ -393,6 +415,8 @@ function togglePlay() {
 }
 
 function updatePlayerUI() {
+  if (currentRecordingAudio) return;
+
   if (currentStation >= 0) {
     stationName.textContent = STATIONS[currentStation].name;
     stationGenre.textContent = STATIONS[currentStation].genre || '';
@@ -584,9 +608,15 @@ function playRecording(id) {
   if (currentRecordingAudio && currentRecordingId === id) {
     if (currentRecordingAudio.paused) {
       currentRecordingAudio.play();
+      playIcon.style.display = 'none';
+      stopIcon.style.display = 'block';
+      stationIcon.classList.add('playing');
       showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435');
     } else {
       currentRecordingAudio.pause();
+      playIcon.style.display = 'block';
+      stopIcon.style.display = 'none';
+      stationIcon.classList.remove('playing');
       showToast('\u041f\u0430\u0443\u0437\u0430');
     }
     return;
@@ -623,10 +653,25 @@ function playRecording(id) {
       currentRecordingId = id;
       currentRecordingAudio.play();
 
+      stationName.textContent = rec.station + ' \u2014 \u0417\u0430\u043f\u0438\u0441\u044c';
+      stationGenre.textContent = formatDate(rec.date) + ' | ' + formatDuration(rec.duration);
+      stationIcon.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3z"/></svg>';
+      playBtn.disabled = false;
+      recordBtn.disabled = true;
+      playerBar.classList.add('active');
+      playIcon.style.display = 'none';
+      stopIcon.style.display = 'block';
+      stationIcon.classList.add('playing');
+      bufferInfo.classList.remove('active');
+      nowPlaying.classList.remove('active');
+
       currentRecordingAudio.addEventListener('ended', function() {
         URL.revokeObjectURL(url);
         currentRecordingAudio = null;
         currentRecordingId = null;
+        playIcon.style.display = 'block';
+        stopIcon.style.display = 'none';
+        stationIcon.classList.remove('playing');
       });
 
       showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435: ' + rec.station);
