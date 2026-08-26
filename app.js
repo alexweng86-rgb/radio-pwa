@@ -1,15 +1,15 @@
 var CORS_PROXY = 'https://corsproxy.io/?';
 
 var STATIONS = [
-  { name: 'Pirate Station', url: 'https://radiorecord.hostingradio.ru/ps96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2016/02/359_the_radio_ru_nbkcvbx.webp' },
-  { name: "D'n'B Hits", url: 'https://radiorecord.hostingradio.ru/drumhits96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2018/08/869_the_radio_ru_i2adata.webp' },
-  { name: 'Neurofunk', url: 'https://radiorecord.hostingradio.ru/neurofunk96.aacp', genre: 'DnB Neurofunk / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2018/06/2825_the_radio_ru_tytm5wt.webp' },
-  { name: 'Darkside', url: 'https://radiorecord.hostingradio.ru/darkside96.aacp', genre: 'DnB Darkside / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2018/06/2821_the_radio_ru_qx8ysms.webp' },
-  { name: 'DNB FM', url: 'https://air.dnbfm.ru/listen/player/play', genre: 'DnB / Liquid', bitrate: 128, icon: 'https://dnbfm.ru/static/icons/production/favicon-32x32.png' },
-  { name: 'BedlamDnB', url: 'https://c11.radioboss.fm:8318/stream', genre: 'DnB', bitrate: 128 },
-  { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128, icon: 'https://somafm.com/logos/120/fluid120.jpg' },
-  { name: 'Sky Plus DnB', url: 'https://edge03.cdn.bitflip.ee:8888/NRJdnb', genre: 'DnB / Dance', bitrate: 256 },
-  { name: 'DnB & EDM', url: 'https://edmdnb.com:448/radio/8000/radio.mp3', genre: 'DnB / EDM', bitrate: 128, icon: 'https://edmdnb.com/images/favicon.ico' }
+  { name: 'Pirate Station', url: 'https://radiorecord.hostingradio.ru/ps96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2016/02/359_the_radio_ru_nbkcvbx.webp', gradient: ['#1a0a2e', '#0f3460'] },
+  { name: "D'n'B Hits", url: 'https://radiorecord.hostingradio.ru/drumhits96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2018/08/869_the_radio_ru_i2adata.webp', gradient: ['#2d1b69', '#ff006e'] },
+  { name: 'Neurofunk', url: 'https://radiorecord.hostingradio.ru/neurofunk96.aacp', genre: 'DnB Neurofunk / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2018/06/2825_the_radio_ru_tytm5wt.webp', gradient: ['#0d0221', '#0ff0b3'] },
+  { name: 'Darkside', url: 'https://radiorecord.hostingradio.ru/darkside96.aacp', genre: 'DnB Darkside / Radio Record', bitrate: 96, icon: 'https://the-radio.ru/ava/2018/06/2821_the_radio_ru_qx8ysms.webp', gradient: ['#1a0000', '#ff1a1a'] },
+  { name: 'DNB FM', url: 'https://air.dnbfm.ru/listen/player/play', genre: 'DnB / Liquid', bitrate: 128, icon: 'https://dnbfm.ru/static/icons/production/favicon-32x32.png', gradient: ['#001219', '#005f73'] },
+  { name: 'BedlamDnB', url: 'https://c11.radioboss.fm:8318/stream', genre: 'DnB', bitrate: 128, gradient: ['#1b0a2e', '#6b21a8'] },
+  { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128, icon: 'https://somafm.com/logos/120/fluid120.jpg', gradient: ['#0c0a2e', '#4361ee'] },
+  { name: 'Sky Plus DnB', url: 'https://edge03.cdn.bitflip.ee:8888/NRJdnb', genre: 'DnB / Dance', bitrate: 256, gradient: ['#0a1628', '#00b4d8'] },
+  { name: 'DnB & EDM', url: 'https://edmdnb.com:448/radio/8000/radio.mp3', genre: 'DnB / EDM', bitrate: 128, icon: 'https://edmdnb.com/images/favicon.ico', gradient: ['#1a0a00', '#ff6600'] }
 ];
 
 var currentStation = -1;
@@ -283,7 +283,12 @@ function renderStations() {
       ? '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M6 6h12v12H6z"/></svg>'
       : '<svg viewBox="0 0 24 24" fill="currentColor" width="28" height="28"><path d="M8 5v14l11-7z"/></svg>';
 
-    html += '<div class="station-card' + (isCurrent ? ' current' : '') + '" data-index="' + idx + '">'
+    var cardStyle = '';
+    if (s.gradient) {
+      cardStyle = ' style="background: linear-gradient(135deg, ' + s.gradient[0] + ', ' + s.gradient[1] + '); border-color: ' + s.gradient[1] + '40;"';
+    }
+
+    html += '<div class="station-card' + (isCurrent ? ' current' : '') + '" data-index="' + idx + '"' + cardStyle + '>'
       + '<div class="drag-handle"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M3 15h18v-2H3v2zm0 4h18v-2H3v2zm0-8h18V9H3v2zm0-6v2h18V5H3z"/></svg></div>'
       + '<div class="station-card-icon">' + iconContent + '</div>'
       + '<div class="station-card-info">'
@@ -423,6 +428,15 @@ function updatePlayerUI() {
     stationGenre.textContent = STATIONS[currentStation].genre || '';
     playBtn.disabled = false;
     recordBtn.disabled = false;
+
+    var s = STATIONS[currentStation];
+    if (s.gradient) {
+      playerBar.style.background = 'linear-gradient(135deg, ' + s.gradient[0] + ', ' + s.gradient[1] + ')';
+      playerBar.style.borderColor = s.gradient[1] + '40';
+    } else {
+      playerBar.style.background = '';
+      playerBar.style.borderColor = '';
+    }
 
     var s = STATIONS[currentStation];
     if (s.icon) {
@@ -676,6 +690,15 @@ function playRecording(id) {
       bufferInfo.classList.remove('active');
       nowPlaying.classList.remove('active');
 
+      var recStation = STATIONS.find(function(st) { return st.name === rec.station; });
+      if (recStation && recStation.gradient) {
+        playerBar.style.background = 'linear-gradient(135deg, ' + recStation.gradient[0] + ', ' + recStation.gradient[1] + ')';
+        playerBar.style.borderColor = recStation.gradient[1] + '40';
+      } else {
+        playerBar.style.background = '';
+        playerBar.style.borderColor = '';
+      }
+
       currentRecordingAudio.addEventListener('ended', function() {
         URL.revokeObjectURL(url);
         currentRecordingAudio = null;
@@ -683,6 +706,8 @@ function playRecording(id) {
         playIcon.style.display = 'block';
         stopIcon.style.display = 'none';
         stationIcon.classList.remove('playing');
+        playerBar.style.background = '';
+        playerBar.style.borderColor = '';
       });
 
       showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435: ' + rec.station);
