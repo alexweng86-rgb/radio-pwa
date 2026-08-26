@@ -1,4 +1,4 @@
-var CACHE_NAME = 'dnb-radio-v1';
+var CACHE_NAME = 'dnb-radio-v2';
 
 self.addEventListener('install', function(e) {
   self.skipWaiting();

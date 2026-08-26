@@ -7,10 +7,10 @@ var STATIONS = [
   { name: 'Darkside', url: 'https://radiorecord.hostingradio.ru/darkside96.aacp', genre: 'DnB Darkside / Radio Record', bitrate: 96 },
   { name: 'DnBRadio', url: 'https://fw.dnbradio.com/dnbradio_main.mp3', genre: 'DnB', bitrate: 320 },
   { name: 'DNB FM', url: 'https://air.dnbfm.ru/listen/player/play', genre: 'DnB / Liquid', bitrate: 128 },
-  { name: 'DnB Liquified', url: 'http://antares.dribbcast.com:5000/stream', genre: 'Liquid DnB', bitrate: 128 },
+  { name: 'BedlamDnB', url: 'https://c11.radioboss.fm:8318/stream', genre: 'DnB', bitrate: 128 },
   { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128 },
-  { name: 'BedlamDnB', url: 'http://c11.radioboss.fm:8318/stream', genre: 'DnB', bitrate: 128 },
-  { name: 'Sky Plus DnB', url: 'https://edge03.cdn.bitflip.ee:8888/NRJdnb', genre: 'DnB / Dance', bitrate: 256 }
+  { name: 'Sky Plus DnB', url: 'https://edge03.cdn.bitflip.ee:8888/NRJdnb', genre: 'DnB / Dance', bitrate: 256 },
+  { name: 'DnB & EDM', url: 'https://edmdnb.com:448/radio/8000/radio.mp3', genre: 'DnB / EDM', bitrate: 128 }
 ];
 
 var currentStation = -1;
@@ -120,6 +120,15 @@ function tryNextProxy() {
     return;
   }
   audio.play().catch(function() {});
+}
+
+var connectTimeout = null;
+
+function clearConnectTimeout() {
+  if (connectTimeout) {
+    clearTimeout(connectTimeout);
+    connectTimeout = null;
+  }
 }
 
 function updateBufferInfo() {
@@ -311,6 +320,7 @@ function playStation(index) {
     audio.src = '';
     currentStation = -1;
     isPlaying = false;
+    clearConnectTimeout();
     stopBufferMonitor();
     stopMetadataReader();
     bufferInfo.classList.remove('active');
@@ -320,6 +330,7 @@ function playStation(index) {
   }
 
   stopBufferMonitor();
+  clearConnectTimeout();
   bufferBarFill.classList.add('loading');
   bufferText.textContent = '\u041f\u043e\u0434\u043a\u043b\u044e\u0447\u0435\u043d\u0438\u0435...';
   bufferInfo.classList.add('active');
@@ -335,15 +346,23 @@ function playStation(index) {
   audio.src = STATIONS[index].url;
   audio.load();
 
+  connectTimeout = setTimeout(function() {
+    if (!isPlaying && currentStation === index) {
+      tryNextProxy();
+    }
+  }, 8000);
+
   var playPromise = audio.play();
   if (playPromise !== undefined) {
     playPromise.then(function() {
+      clearConnectTimeout();
       playerBar.classList.add('active');
       startBufferMonitor();
       startMetadataReader();
       updatePlayerUI();
       renderStations();
     }).catch(function() {
+      clearConnectTimeout();
       tryNextProxy();
     });
   } else {
