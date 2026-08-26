@@ -356,12 +356,6 @@ function playStation(index) {
     currentRecordingAudio = null;
   }
 
-  var ctx = ensureAudioCtx();
-  if (ctx.state === 'suspended') {
-    ctx.resume();
-  }
-  ensureMainSource();
-
   audio.pause();
   audio.src = STATIONS[index].url;
   audio.load();
@@ -465,27 +459,7 @@ function toggleRecording() {
   }
 }
 
-var recDestNode = null;
-var mainSourceNode = null;
-var gainNode = null;
-var audioApiFailed = false;
 var recFallbackAudio = null;
-
-function ensureMainSource() {
-  if (mainSourceNode || audioApiFailed) return;
-  try {
-    var ctx = ensureAudioCtx();
-    mainSourceNode = ctx.createMediaElementSource(audio);
-    audio.volume = 1;
-    gainNode = ctx.createGain();
-    gainNode.gain.value = volumeSlider.value / 100;
-    mainSourceNode.connect(gainNode);
-    gainNode.connect(ctx.destination);
-  } catch (e) {
-    audioApiFailed = true;
-    audio.volume = volumeSlider.value / 100;
-  }
-}
 
 function startRecording() {
   if (!isPlaying) {
@@ -494,27 +468,18 @@ function startRecording() {
   }
 
   try {
-    var stream = null;
-
-    if (mainSourceNode) {
-      ensureMainSource();
-      var ctx = ensureAudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
-      recDestNode = ctx.createMediaStreamDestination();
-      mainSourceNode.connect(recDestNode);
-      stream = recDestNode.stream;
-    } else {
-      if (audio.captureStream) {
-        recFallbackAudio = new Audio(audio.src);
-        recFallbackAudio.volume = 1;
-        recFallbackAudio.crossOrigin = 'anonymous';
-        recFallbackAudio.play().catch(function() {});
-        stream = recFallbackAudio.captureStream();
-      } else {
-        showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435');
-        return;
-      }
+    if (!audio.captureStream && !audio.mozCaptureStream) {
+      showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435');
+      return;
     }
+
+    recFallbackAudio = new Audio(audio.src);
+    recFallbackAudio.crossOrigin = 'anonymous';
+    recFallbackAudio.volume = 1;
+    recFallbackAudio.play().catch(function() {});
+
+    var captureFn = audio.captureStream || audio.mozCaptureStream;
+    var stream = captureFn.call(recFallbackAudio);
 
     var mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -552,10 +517,6 @@ function startRecording() {
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
-  }
-  if (recDestNode && mainSourceNode) {
-    try { mainSourceNode.disconnect(recDestNode); } catch (_) {}
-    recDestNode = null;
   }
   if (recFallbackAudio) {
     recFallbackAudio.pause();
@@ -939,11 +900,7 @@ function loadSettings() {
   try {
     var s = JSON.parse(saved);
     if (s.volume !== undefined) {
-      if (gainNode) {
-        gainNode.gain.value = s.volume / 100;
-      } else {
-        audio.volume = s.volume / 100;
-      }
+      audio.volume = s.volume / 100;
       volumeSlider.value = s.volume;
     }
   } catch (_) {}
@@ -1000,11 +957,7 @@ settingsResetFolder.addEventListener('click', function() {
 });
 
 settingsVolume.addEventListener('input', function() {
-  if (gainNode) {
-    gainNode.gain.value = settingsVolume.value / 100;
-  } else {
-    audio.volume = settingsVolume.value / 100;
-  }
+  audio.volume = settingsVolume.value / 100;
   if (currentRecordingAudio) currentRecordingAudio.volume = settingsVolume.value / 100;
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
@@ -1013,11 +966,7 @@ settingsVolume.addEventListener('input', function() {
 });
 
 volumeSlider.addEventListener('input', function() {
-  if (gainNode) {
-    gainNode.gain.value = volumeSlider.value / 100;
-  } else {
-    audio.volume = volumeSlider.value / 100;
-  }
+  audio.volume = volumeSlider.value / 100;
   if (currentRecordingAudio) currentRecordingAudio.volume = volumeSlider.value / 100;
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
