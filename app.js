@@ -438,10 +438,14 @@ function startRecording() {
   try {
     var stream = null;
 
-    if (audio.captureStream) {
-      stream = audio.captureStream();
-    } else if (audio.mozCaptureStream) {
-      stream = audio.mozCaptureStream();
+    try {
+      if (audio.captureStream) {
+        stream = audio.captureStream();
+      } else if (audio.mozCaptureStream) {
+        stream = audio.mozCaptureStream();
+      }
+    } catch (_) {
+      stream = null;
     }
 
     if (!stream || !stream.active || (stream.getAudioTracks && stream.getAudioTracks().length === 0)) {
