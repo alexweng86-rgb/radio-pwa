@@ -24,8 +24,6 @@ var audioChunks = [];
 var searchQuery = '';
 var bufferMonitorTimer = null;
 var audioCtx = null;
-var sourceNode = null;
-var destNode = null;
 var metadataTimer = null;
 var TARGET_BUFFER = 60;
 var MIN_BUFFER_TO_PLAY = 2;
@@ -413,6 +411,10 @@ function toggleRecording() {
   }
 }
 
+var recAudio = null;
+var recSourceNode = null;
+var recDestNode = null;
+
 function startRecording() {
   if (!isPlaying) {
     showToast('\u0421\u043d\u0430\u0447\u0430\u043b\u0430 \u0437\u0430\u043f\u0443\u0441\u0442\u0438\u0442\u0435 \u0432\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435');
@@ -423,14 +425,25 @@ function startRecording() {
     var ctx = ensureAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
 
-    if (!sourceNode) {
-      sourceNode = ctx.createMediaElementSource(audio);
-      destNode = ctx.createMediaStreamDestination();
-      sourceNode.connect(destNode);
-      sourceNode.connect(ctx.destination);
+    if (!recAudio) {
+      recAudio = new Audio();
+      recAudio.crossOrigin = 'anonymous';
+      recAudio.preload = 'auto';
     }
 
-    var stream = destNode.stream;
+    var originalUrl = STATIONS[currentStation].url;
+    recAudio.src = CORS_PROXY + encodeURIComponent(originalUrl);
+    recAudio.load();
+
+    if (!recSourceNode) {
+      recSourceNode = ctx.createMediaElementSource(recAudio);
+      recDestNode = ctx.createMediaStreamDestination();
+      recSourceNode.connect(recDestNode);
+    }
+
+    recAudio.play().catch(function() {});
+
+    var stream = recDestNode.stream;
     var mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
       mimeType = 'audio/webm;codecs=opus';
@@ -467,6 +480,10 @@ function startRecording() {
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
+  }
+  if (recAudio) {
+    recAudio.pause();
+    recAudio.src = '';
   }
   isRecording = false;
   if (recordingTimer) {
