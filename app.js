@@ -5,7 +5,6 @@ var STATIONS = [
   { name: "D'n'B Hits", url: 'https://radiorecord.hostingradio.ru/drumhits96.aacp', genre: 'DnB / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
   { name: 'Neurofunk', url: 'https://radiorecord.hostingradio.ru/neurofunk96.aacp', genre: 'DnB Neurofunk / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
   { name: 'Darkside', url: 'https://radiorecord.hostingradio.ru/darkside96.aacp', genre: 'DnB Darkside / Radio Record', bitrate: 96, icon: 'https://www.radiorecord.ru/icons/logo300-300.jpg' },
-  { name: 'DnBRadio', url: 'https://fw.dnbradio.com/dnbradio_main.mp3', genre: 'DnB', bitrate: 320, icon: 'https://dnbradio.com/images/dnbradio_sq.png' },
   { name: 'DNB FM', url: 'https://air.dnbfm.ru/listen/player/play', genre: 'DnB / Liquid', bitrate: 128, icon: 'https://dnbfm.ru/static/icons/production/favicon-32x32.png' },
   { name: 'BedlamDnB', url: 'https://c11.radioboss.fm:8318/stream', genre: 'DnB', bitrate: 128 },
   { name: 'SomaFM Fluid', url: 'https://ice1.somafm.com/fluid-128-mp3', genre: 'Liquid DnB / Future Soul', bitrate: 128, icon: 'https://somafm.com/logos/120/fluid120.jpg' },
