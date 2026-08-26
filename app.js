@@ -463,6 +463,7 @@ function toggleRecording() {
 var recDestNode = null;
 var mainSourceNode = null;
 var playbackGain = null;
+var recAudio = null;
 
 function startRecording() {
   if (!isPlaying) {
@@ -471,19 +472,30 @@ function startRecording() {
   }
 
   try {
-    var ctx = ensureAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
-    if (!mainSourceNode) {
-      mainSourceNode = ctx.createMediaElementSource(audio);
-      audio.volume = 1;
-      playbackGain = ctx.createGain();
-      playbackGain.gain.value = volumeSlider.value / 100;
-      mainSourceNode.connect(playbackGain);
-      playbackGain.connect(ctx.destination);
+    var stream = null;
+
+    var captureFn = audio.captureStream || audio.mozCaptureStream;
+    if (captureFn) {
+      recAudio = new Audio(audio.src);
+      recAudio.crossOrigin = 'anonymous';
+      recAudio.volume = 1;
+      recAudio.play().catch(function() {});
+      stream = captureFn.call(recAudio);
+    } else {
+      var ctx = ensureAudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      if (!mainSourceNode) {
+        mainSourceNode = ctx.createMediaElementSource(audio);
+        audio.volume = 1;
+        playbackGain = ctx.createGain();
+        playbackGain.gain.value = volumeSlider.value / 100;
+        mainSourceNode.connect(playbackGain);
+        playbackGain.connect(ctx.destination);
+      }
+      recDestNode = ctx.createMediaStreamDestination();
+      mainSourceNode.connect(recDestNode);
+      stream = recDestNode.stream;
     }
-    recDestNode = ctx.createMediaStreamDestination();
-    mainSourceNode.connect(recDestNode);
-    var stream = recDestNode.stream;
 
     var mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -521,6 +533,11 @@ function startRecording() {
 function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
+  }
+  if (recAudio) {
+    recAudio.pause();
+    recAudio.src = '';
+    recAudio = null;
   }
   if (recDestNode && mainSourceNode) {
     try { mainSourceNode.disconnect(recDestNode); } catch (_) {}
