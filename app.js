@@ -337,11 +337,18 @@ function playStation(index) {
   currentStation = index;
   STATIONS[index]._proxyAttempt = 0;
 
+  if (currentRecordingAudio) {
+    currentRecordingAudio.pause();
+    currentRecordingAudio.src = '';
+    currentRecordingAudio = null;
+  }
+
   var ctx = ensureAudioCtx();
   if (ctx.state === 'suspended') {
     ctx.resume();
   }
 
+  audio.pause();
   audio.src = STATIONS[index].url;
   audio.load();
 
@@ -587,14 +594,31 @@ function playRecording(id) {
 
       if (currentRecordingAudio) {
         currentRecordingAudio.pause();
+        currentRecordingAudio.src = '';
         currentRecordingAudio = null;
       }
 
-      if (isPlaying) audio.pause();
+      if (isPlaying) {
+        audio.pause();
+        audio.src = '';
+        isPlaying = false;
+        currentStation = -1;
+        stopBufferMonitor();
+        stopMetadataReader();
+        bufferInfo.classList.remove('active');
+        updatePlayerUI();
+        renderStations();
+      }
 
       var url = URL.createObjectURL(rec.blob);
       currentRecordingAudio = new Audio(url);
       currentRecordingAudio.play();
+
+      currentRecordingAudio.addEventListener('ended', function() {
+        URL.revokeObjectURL(url);
+        currentRecordingAudio = null;
+      });
+
       showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435: ' + rec.station);
     };
   });
