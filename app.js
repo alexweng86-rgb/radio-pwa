@@ -468,16 +468,23 @@ function toggleRecording() {
 var recDestNode = null;
 var mainSourceNode = null;
 var gainNode = null;
+var audioApiFailed = false;
+var recFallbackAudio = null;
 
 function ensureMainSource() {
-  if (mainSourceNode) return;
-  var ctx = ensureAudioCtx();
-  mainSourceNode = ctx.createMediaElementSource(audio);
-  audio.volume = 1;
-  gainNode = ctx.createGain();
-  gainNode.gain.value = volumeSlider.value / 100;
-  mainSourceNode.connect(gainNode);
-  gainNode.connect(ctx.destination);
+  if (mainSourceNode || audioApiFailed) return;
+  try {
+    var ctx = ensureAudioCtx();
+    mainSourceNode = ctx.createMediaElementSource(audio);
+    audio.volume = 1;
+    gainNode = ctx.createGain();
+    gainNode.gain.value = volumeSlider.value / 100;
+    mainSourceNode.connect(gainNode);
+    gainNode.connect(ctx.destination);
+  } catch (e) {
+    audioApiFailed = true;
+    audio.volume = volumeSlider.value / 100;
+  }
 }
 
 function startRecording() {
@@ -487,13 +494,27 @@ function startRecording() {
   }
 
   try {
-    ensureMainSource();
-    var ctx = ensureAudioCtx();
-    if (ctx.state === 'suspended') ctx.resume();
+    var stream = null;
 
-    recDestNode = ctx.createMediaStreamDestination();
-    mainSourceNode.connect(recDestNode);
-    var stream = recDestNode.stream;
+    if (mainSourceNode) {
+      ensureMainSource();
+      var ctx = ensureAudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+      recDestNode = ctx.createMediaStreamDestination();
+      mainSourceNode.connect(recDestNode);
+      stream = recDestNode.stream;
+    } else {
+      if (audio.captureStream) {
+        recFallbackAudio = new Audio(audio.src);
+        recFallbackAudio.volume = 1;
+        recFallbackAudio.crossOrigin = 'anonymous';
+        recFallbackAudio.play().catch(function() {});
+        stream = recFallbackAudio.captureStream();
+      } else {
+        showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435');
+        return;
+      }
+    }
 
     var mimeType = 'audio/webm';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -535,6 +556,11 @@ function stopRecording() {
   if (recDestNode && mainSourceNode) {
     try { mainSourceNode.disconnect(recDestNode); } catch (_) {}
     recDestNode = null;
+  }
+  if (recFallbackAudio) {
+    recFallbackAudio.pause();
+    recFallbackAudio.src = '';
+    recFallbackAudio = null;
   }
   isRecording = false;
   if (recordingTimer) {
@@ -974,7 +1000,11 @@ settingsResetFolder.addEventListener('click', function() {
 });
 
 settingsVolume.addEventListener('input', function() {
-  if (gainNode) gainNode.gain.value = settingsVolume.value / 100;
+  if (gainNode) {
+    gainNode.gain.value = settingsVolume.value / 100;
+  } else {
+    audio.volume = settingsVolume.value / 100;
+  }
   if (currentRecordingAudio) currentRecordingAudio.volume = settingsVolume.value / 100;
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
@@ -983,7 +1013,11 @@ settingsVolume.addEventListener('input', function() {
 });
 
 volumeSlider.addEventListener('input', function() {
-  if (gainNode) gainNode.gain.value = volumeSlider.value / 100;
+  if (gainNode) {
+    gainNode.gain.value = volumeSlider.value / 100;
+  } else {
+    audio.volume = volumeSlider.value / 100;
+  }
   if (currentRecordingAudio) currentRecordingAudio.volume = volumeSlider.value / 100;
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
