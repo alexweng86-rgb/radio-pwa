@@ -355,6 +355,7 @@ function playStation(index) {
   if (ctx.state === 'suspended') {
     ctx.resume();
   }
+  ensureMainSource();
 
   audio.pause();
   audio.src = STATIONS[index].url;
@@ -452,6 +453,17 @@ function toggleRecording() {
 
 var recDestNode = null;
 var mainSourceNode = null;
+var gainNode = null;
+
+function ensureMainSource() {
+  if (mainSourceNode) return;
+  var ctx = ensureAudioCtx();
+  mainSourceNode = ctx.createMediaElementSource(audio);
+  gainNode = ctx.createGain();
+  gainNode.gain.value = audio.volume;
+  mainSourceNode.connect(gainNode);
+  gainNode.connect(ctx.destination);
+}
 
 function startRecording() {
   if (!isPlaying) {
@@ -460,12 +472,10 @@ function startRecording() {
   }
 
   try {
+    ensureMainSource();
     var ctx = ensureAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
-    if (!mainSourceNode) {
-      mainSourceNode = ctx.createMediaElementSource(audio);
-      mainSourceNode.connect(ctx.destination);
-    }
+
     recDestNode = ctx.createMediaStreamDestination();
     mainSourceNode.connect(recDestNode);
     var stream = recDestNode.stream;
@@ -934,6 +944,7 @@ settingsResetFolder.addEventListener('click', function() {
 
 settingsVolume.addEventListener('input', function() {
   audio.volume = settingsVolume.value / 100;
+  if (gainNode) gainNode.gain.value = audio.volume;
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
   s.volume = parseInt(settingsVolume.value);
@@ -942,6 +953,7 @@ settingsVolume.addEventListener('input', function() {
 
 volumeSlider.addEventListener('input', function() {
   audio.volume = volumeSlider.value / 100;
+  if (gainNode) gainNode.gain.value = audio.volume;
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
   s.volume = parseInt(volumeSlider.value);
