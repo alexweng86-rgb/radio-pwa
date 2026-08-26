@@ -578,8 +578,20 @@ function deleteRecording(id) {
 }
 
 var currentRecordingAudio = null;
+var currentRecordingId = null;
 
 function playRecording(id) {
+  if (currentRecordingAudio && currentRecordingId === id) {
+    if (currentRecordingAudio.paused) {
+      currentRecordingAudio.play();
+      showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435');
+    } else {
+      currentRecordingAudio.pause();
+      showToast('\u041f\u0430\u0443\u0437\u0430');
+    }
+    return;
+  }
+
   openDB().then(function(db) {
     var tx = db.transaction('recordings', 'readonly');
     var req = tx.objectStore('recordings').get(id);
@@ -591,6 +603,7 @@ function playRecording(id) {
         currentRecordingAudio.pause();
         currentRecordingAudio.src = '';
         currentRecordingAudio = null;
+        currentRecordingId = null;
       }
 
       if (isPlaying) {
@@ -607,11 +620,13 @@ function playRecording(id) {
 
       var url = URL.createObjectURL(rec.blob);
       currentRecordingAudio = new Audio(url);
+      currentRecordingId = id;
       currentRecordingAudio.play();
 
       currentRecordingAudio.addEventListener('ended', function() {
         URL.revokeObjectURL(url);
         currentRecordingAudio = null;
+        currentRecordingId = null;
       });
 
       showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435: ' + rec.station);
