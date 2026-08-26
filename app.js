@@ -675,6 +675,7 @@ function playRecording(id) {
 
       var url = URL.createObjectURL(rec.blob);
       currentRecordingAudio = new Audio(url);
+      currentRecordingAudio.volume = volumeSlider.value / 100;
       currentRecordingId = id;
       currentRecordingAudio.play();
 
@@ -974,6 +975,7 @@ settingsResetFolder.addEventListener('click', function() {
 
 settingsVolume.addEventListener('input', function() {
   if (gainNode) gainNode.gain.value = settingsVolume.value / 100;
+  if (currentRecordingAudio) currentRecordingAudio.volume = settingsVolume.value / 100;
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
   s.volume = parseInt(settingsVolume.value);
@@ -982,6 +984,7 @@ settingsVolume.addEventListener('input', function() {
 
 volumeSlider.addEventListener('input', function() {
   if (gainNode) gainNode.gain.value = volumeSlider.value / 100;
+  if (currentRecordingAudio) currentRecordingAudio.volume = volumeSlider.value / 100;
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
   s.volume = parseInt(volumeSlider.value);
