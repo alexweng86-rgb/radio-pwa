@@ -71,7 +71,6 @@ function showToast(msg) {
 }
 
 audio.preload = 'auto';
-audio.crossOrigin = 'anonymous';
 audio.volume = volumeSlider.value / 100;
 
 audio.addEventListener('playing', function() {
@@ -457,6 +456,7 @@ function toggleRecording() {
 
 var recDestNode = null;
 var recSourceNode = null;
+var recHiddenAudio = null;
 
 function startRecording() {
   if (!isPlaying) {
@@ -468,12 +468,12 @@ function startRecording() {
     var ctx = ensureAudioCtx();
     if (ctx.state === 'suspended') ctx.resume();
 
-    var hiddenAudio = new Audio(audio.src);
-    hiddenAudio.crossOrigin = 'anonymous';
-    recSourceNode = ctx.createMediaElementSource(hiddenAudio);
+    recHiddenAudio = new Audio(audio.src);
+    recHiddenAudio.crossOrigin = 'anonymous';
+    recSourceNode = ctx.createMediaElementSource(recHiddenAudio);
     recDestNode = ctx.createMediaStreamDestination();
     recSourceNode.connect(recDestNode);
-    hiddenAudio.play().catch(function() {});
+    recHiddenAudio.play().catch(function() {});
 
     var mimeType = '';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -518,10 +518,14 @@ function stopRecording() {
   if (mediaRecorder && mediaRecorder.state !== 'inactive') {
     mediaRecorder.stop();
   }
-  if (recDestNode && recSourceNode) {
-    try { recSourceNode.disconnect(recDestNode); } catch (_) {}
-    recDestNode = null;
+  if (recHiddenAudio) {
+    try { recHiddenAudio.pause(); recHiddenAudio.src = ''; } catch (_) {}
+    recHiddenAudio = null;
+  }
+  if (recSourceNode && recDestNode) {
+    try { recSourceNode.disconnect(); } catch (_) {}
     recSourceNode = null;
+    recDestNode = null;
   }
   isRecording = false;
   if (recordingTimer) {
