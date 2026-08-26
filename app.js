@@ -462,6 +462,7 @@ function toggleRecording() {
 
 var recDestNode = null;
 var mainSourceNode = null;
+var playbackGain = null;
 
 function startRecording() {
   if (!isPlaying) {
@@ -474,7 +475,11 @@ function startRecording() {
     if (ctx.state === 'suspended') ctx.resume();
     if (!mainSourceNode) {
       mainSourceNode = ctx.createMediaElementSource(audio);
-      mainSourceNode.connect(ctx.destination);
+      audio.volume = 1;
+      playbackGain = ctx.createGain();
+      playbackGain.gain.value = volumeSlider.value / 100;
+      mainSourceNode.connect(playbackGain);
+      playbackGain.connect(ctx.destination);
     }
     recDestNode = ctx.createMediaStreamDestination();
     mainSourceNode.connect(recDestNode);
@@ -898,7 +903,11 @@ function loadSettings() {
   try {
     var s = JSON.parse(saved);
     if (s.volume !== undefined) {
-      audio.volume = s.volume / 100;
+      if (playbackGain) {
+        playbackGain.gain.value = s.volume / 100;
+      } else {
+        audio.volume = s.volume / 100;
+      }
       volumeSlider.value = s.volume;
     }
   } catch (_) {}
@@ -955,7 +964,11 @@ settingsResetFolder.addEventListener('click', function() {
 });
 
 settingsVolume.addEventListener('input', function() {
-  audio.volume = settingsVolume.value / 100;
+  if (playbackGain) {
+    playbackGain.gain.value = settingsVolume.value / 100;
+  } else {
+    audio.volume = settingsVolume.value / 100;
+  }
   if (currentRecordingAudio) currentRecordingAudio.volume = settingsVolume.value / 100;
   volumeSlider.value = settingsVolume.value;
   var s = getSettingsObj();
@@ -964,7 +977,11 @@ settingsVolume.addEventListener('input', function() {
 });
 
 volumeSlider.addEventListener('input', function() {
-  audio.volume = volumeSlider.value / 100;
+  if (playbackGain) {
+    playbackGain.gain.value = volumeSlider.value / 100;
+  } else {
+    audio.volume = volumeSlider.value / 100;
+  }
   if (currentRecordingAudio) currentRecordingAudio.volume = volumeSlider.value / 100;
   settingsVolume.value = volumeSlider.value;
   var s = getSettingsObj();
