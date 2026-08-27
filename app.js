@@ -50,12 +50,6 @@ var nowPlaying = document.getElementById('nowPlaying');
 var npTrack = document.getElementById('npTrack');
 var reorderBtn = document.getElementById('reorderBtn');
 var stationsPanel = document.getElementById('stationsPanel');
-var seekTrack = document.getElementById('seekTrack');
-var seekBarWrap = document.getElementById('seekBarWrap');
-var seekBarFill = document.getElementById('seekBarFill');
-var seekBarThumb = document.getElementById('seekBarThumb');
-var seekCurrent = document.getElementById('seekCurrent');
-var seekDuration = document.getElementById('seekDuration');
 var seekTimer = null;
 
 function ensureAudioCtx() {
@@ -783,6 +777,14 @@ function renderRecordings() {
         + '<div class="recording-card-info">'
         + '<div class="recording-card-name">' + escapeHtml(rec.station) + '</div>'
         + '<div class="recording-card-meta">' + formatDate(rec.date) + ' | ' + formatDuration(rec.duration) + ' | ' + formatSize(rec.size) + '</div>'
+        + '<div class="card-seek" data-id="' + rec.id + '">'
+        + '<span class="seek-time">' + formatDuration(0) + '</span>'
+        + '<div class="seek-bar-wrap">'
+        + '<div class="seek-bar-fill"></div>'
+        + '<div class="seek-bar-thumb"></div>'
+        + '</div>'
+        + '<span class="seek-time">' + formatDuration(rec.duration) + '</span>'
+        + '</div>'
         + '</div>'
         + '<div class="recording-card-actions">'
         + '<button class="btn-play-rec" data-id="' + rec.id + '"><svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M8 5v14l11-7z"/></svg></button>'
@@ -821,6 +823,53 @@ function renderRecordings() {
           downloadRecording(parseInt(btn.dataset.id));
         });
       })(dlBtns[dl]);
+    }
+
+    var cardSeeks = recordingsList.querySelectorAll('.card-seek');
+    for (var cs = 0; cs < cardSeeks.length; cs++) {
+      (function(seekEl) {
+        var wrap = seekEl.querySelector('.seek-bar-wrap');
+        var fill = seekEl.querySelector('.seek-bar-fill');
+        var thumb = seekEl.querySelector('.seek-bar-thumb');
+        var times = seekEl.querySelectorAll('.seek-time');
+        var dragging = false;
+
+        function doSeek(e) {
+          if (!currentRecordingAudio) return;
+          var recId = parseInt(seekEl.dataset.id);
+          if (currentRecordingId !== recId) return;
+          var rect = wrap.getBoundingClientRect();
+          var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          var dur = currentRecordingAudio.duration || 0;
+          if (isFinite(dur) && dur > 0) {
+            currentRecordingAudio.currentTime = pct * dur;
+            fill.style.width = (pct * 100) + '%';
+            thumb.style.left = (pct * 100) + '%';
+            if (times[0]) times[0].textContent = formatDuration(pct * dur);
+          }
+        }
+
+        wrap.addEventListener('click', function(e) {
+          e.stopPropagation();
+          doSeek(e);
+        });
+        wrap.addEventListener('mousedown', function(e) {
+          e.stopPropagation();
+          dragging = true;
+          doSeek(e);
+        });
+        wrap.addEventListener('touchstart', function(e) {
+          dragging = true;
+          doSeek(e.touches[0]);
+        }, { passive: true });
+
+        seekEl._dragHandler = function(e) { if (dragging) doSeek(e); };
+        seekEl._upHandler = function() { dragging = false; };
+        document.addEventListener('mousemove', seekEl._dragHandler);
+        document.addEventListener('touchmove', function(e) { if (dragging) doSeek(e.touches[0]); });
+        document.addEventListener('mouseup', seekEl._upHandler);
+        document.addEventListener('touchend', seekEl._upHandler);
+      })(cardSeeks[cs]);
     }
   });
 }
@@ -1031,78 +1080,43 @@ settingsVolume.value = volumeSlider.value;
 
 function showSeekTrack() {
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
-  seekBarFill.style.width = '0%';
-  seekBarThumb.style.left = '0%';
-  seekCurrent.textContent = '00:00';
-  seekDuration.textContent = '00:00';
-  seekTrack.style.display = 'flex';
   seekTimer = setInterval(updateSeekTrack, 200);
+  updateSeekTrack();
 }
 
 function hideSeekTrack() {
-  seekTrack.style.display = 'none';
   if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+  if (currentRecordingId !== null) {
+    var card = recordingsList.querySelector('.recording-card[data-id="' + currentRecordingId + '"]');
+    if (card) {
+      var fill = card.querySelector('.seek-bar-fill');
+      var thumb = card.querySelector('.seek-bar-thumb');
+      var times = card.querySelectorAll('.seek-time');
+      if (fill) fill.style.width = '0%';
+      if (thumb) thumb.style.left = '0%';
+      if (times[0]) times[0].textContent = '00:00';
+    }
+  }
 }
 
 function updateSeekTrack() {
-  if (!currentRecordingAudio) { hideSeekTrack(); return; }
+  if (!currentRecordingAudio || currentRecordingId === null) return;
+  var card = recordingsList.querySelector('.recording-card[data-id="' + currentRecordingId + '"]');
+  if (!card) return;
+  var fill = card.querySelector('.seek-bar-fill');
+  var thumb = card.querySelector('.seek-bar-thumb');
+  var times = card.querySelectorAll('.seek-time');
+  if (!fill) return;
   var cur = currentRecordingAudio.currentTime;
   var dur = currentRecordingAudio.duration;
-  if (!cur && cur !== 0) return;
+  if (cur === undefined || cur === null) return;
   if (!isFinite(dur) || dur <= 0) {
-    seekCurrent.textContent = formatDuration(cur || 0);
+    if (times[0]) times[0].textContent = formatDuration(cur || 0);
     return;
   }
   var pct = (cur / dur) * 100;
-  seekBarFill.style.width = pct + '%';
-  seekBarThumb.style.left = pct + '%';
-  seekCurrent.textContent = formatDuration(cur);
-  seekDuration.textContent = formatDuration(dur);
+  fill.style.width = pct + '%';
+  thumb.style.left = pct + '%';
+  if (times[0]) times[0].textContent = formatDuration(cur);
+  if (times[1]) times[1].textContent = formatDuration(dur);
 }
-
-seekBarWrap.addEventListener('click', function(e) {
-  if (!currentRecordingAudio) return;
-  var rect = seekBarWrap.getBoundingClientRect();
-  var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  var dur = currentRecordingAudio.duration || 0;
-  if (isFinite(dur) && dur > 0) {
-    currentRecordingAudio.currentTime = pct * dur;
-    updateSeekTrack();
-  }
-});
-
-var seekDragging = false;
-
-seekBarWrap.addEventListener('mousedown', function(e) {
-  seekDragging = true;
-  seekSeek(e);
-});
-document.addEventListener('mousemove', function(e) {
-  if (seekDragging) seekSeek(e);
-});
-document.addEventListener('mouseup', function() { seekDragging = false; });
-
-seekBarWrap.addEventListener('touchstart', function(e) {
-  seekDragging = true;
-  seekSeek(e.touches[0]);
-}, { passive: true });
-document.addEventListener('touchmove', function(e) {
-  if (seekDragging) seekSeek(e.touches[0]);
-});
-document.addEventListener('touchend', function() { seekDragging = false; });
-
-function seekSeek(e) {
-  if (!currentRecordingAudio) return;
-  var rect = seekBarWrap.getBoundingClientRect();
-  var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-  var dur = currentRecordingAudio.duration || 0;
-  if (isFinite(dur) && dur > 0) {
-    currentRecordingAudio.currentTime = pct * dur;
-    var ppct = pct * 100;
-    seekBarFill.style.width = ppct + '%';
-    seekBarThumb.style.left = ppct + '%';
-    seekCurrent.textContent = formatDuration(pct * dur);
-  }
-}
-
-audio.addEventListener('play', function() { hideSeekTrack(); });
