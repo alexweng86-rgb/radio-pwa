@@ -698,8 +698,13 @@ function playRecording(id) {
       currentRecordingAudio = new Audio(url);
       currentRecordingAudio.volume = volumeSlider.value / 100;
       currentRecordingId = id;
-      currentRecordingAudio.play();
+
+      currentRecordingAudio.addEventListener('loadedmetadata', function() {
+        updateSeekTrack();
+      });
+
       showSeekTrack();
+      currentRecordingAudio.play();
 
       stationName.textContent = rec.station + ' \u2014 \u0417\u0430\u043f\u0438\u0441\u044c';
       stationGenre.textContent = formatDate(rec.date) + ' | ' + formatDuration(rec.duration);
@@ -1025,9 +1030,13 @@ loadSettings();
 settingsVolume.value = volumeSlider.value;
 
 function showSeekTrack() {
+  if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+  seekBarFill.style.width = '0%';
+  seekBarThumb.style.left = '0%';
+  seekCurrent.textContent = '00:00';
+  seekDuration.textContent = '00:00';
   seekTrack.style.display = 'flex';
-  updateSeekTrack();
-  seekTimer = setInterval(updateSeekTrack, 250);
+  seekTimer = setInterval(updateSeekTrack, 200);
 }
 
 function hideSeekTrack() {
@@ -1036,10 +1045,14 @@ function hideSeekTrack() {
 }
 
 function updateSeekTrack() {
-  if (!currentRecordingAudio) return;
-  var cur = currentRecordingAudio.currentTime || 0;
-  var dur = currentRecordingAudio.duration || 0;
-  if (!isFinite(dur) || dur <= 0) return;
+  if (!currentRecordingAudio) { hideSeekTrack(); return; }
+  var cur = currentRecordingAudio.currentTime;
+  var dur = currentRecordingAudio.duration;
+  if (!cur && cur !== 0) return;
+  if (!isFinite(dur) || dur <= 0) {
+    seekCurrent.textContent = formatDuration(cur || 0);
+    return;
+  }
   var pct = (cur / dur) * 100;
   seekBarFill.style.width = pct + '%';
   seekBarThumb.style.left = pct + '%';
