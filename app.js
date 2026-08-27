@@ -694,7 +694,7 @@ function playRecording(id) {
       currentRecordingId = id;
 
       currentRecordingAudio.addEventListener('loadedmetadata', function() {
-        updateSeekTrack();
+        lastSeekSync = 0;
       });
 
       showSeekTrack();
@@ -1081,13 +1081,13 @@ loadSettings();
 settingsVolume.value = volumeSlider.value;
 
 function showSeekTrack() {
-  if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
-  seekTimer = setInterval(updateSeekTrack, 200);
-  updateSeekTrack();
+  if (seekTimer) { cancelAnimationFrame(seekTimer); seekTimer = null; }
+  lastSeekSync = 0;
+  seekRafLoop();
 }
 
 function hideSeekTrack() {
-  if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+  if (seekTimer) { cancelAnimationFrame(seekTimer); seekTimer = null; }
   if (currentRecordingId !== null) {
     var card = recordingsList.querySelector('.recording-card[data-id="' + currentRecordingId + '"]');
     if (card) {
@@ -1101,7 +1101,10 @@ function hideSeekTrack() {
   }
 }
 
-function updateSeekTrack() {
+var lastSeekSync = 0;
+
+function seekRafLoop() {
+  seekTimer = requestAnimationFrame(seekRafLoop);
   if (!currentRecordingAudio || currentRecordingId === null) return;
   var card = recordingsList.querySelector('.recording-card[data-id="' + currentRecordingId + '"]');
   if (!card) return;
@@ -1119,6 +1122,10 @@ function updateSeekTrack() {
   var pct = (cur / dur) * 100;
   fill.style.width = pct + '%';
   thumb.style.left = pct + '%';
-  if (times[0]) times[0].textContent = formatDuration(cur);
-  if (times[1]) times[1].textContent = formatDuration(dur);
+  var now = Date.now();
+  if (now - lastSeekSync > 400) {
+    lastSeekSync = now;
+    if (times[0]) times[0].textContent = formatDuration(cur);
+    if (times[1]) times[1].textContent = formatDuration(dur);
+  }
 }
