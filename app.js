@@ -50,6 +50,13 @@ var nowPlaying = document.getElementById('nowPlaying');
 var npTrack = document.getElementById('npTrack');
 var reorderBtn = document.getElementById('reorderBtn');
 var stationsPanel = document.getElementById('stationsPanel');
+var seekTrack = document.getElementById('seekTrack');
+var seekBarWrap = document.getElementById('seekBarWrap');
+var seekBarFill = document.getElementById('seekBarFill');
+var seekBarThumb = document.getElementById('seekBarThumb');
+var seekCurrent = document.getElementById('seekCurrent');
+var seekDuration = document.getElementById('seekDuration');
+var seekTimer = null;
 
 function ensureAudioCtx() {
   if (!audioCtx) {
@@ -315,6 +322,8 @@ function playStation(index) {
     showToast('\u041e\u0441\u0442\u0430\u043d\u043e\u0432\u0438\u0442\u0435 \u0437\u0430\u043f\u0438\u0441\u044c \u043f\u0435\u0440\u0435\u0434 \u0441\u043c\u0435\u043d\u043e\u0439 \u0441\u0442\u0430\u043d\u0446\u0438\u0438');
     return;
   }
+
+  hideSeekTrack();
 
   if (currentRecordingAudio) {
     currentRecordingAudio.pause();
@@ -690,6 +699,7 @@ function playRecording(id) {
       currentRecordingAudio.volume = volumeSlider.value / 100;
       currentRecordingId = id;
       currentRecordingAudio.play();
+      showSeekTrack();
 
       stationName.textContent = rec.station + ' \u2014 \u0417\u0430\u043f\u0438\u0441\u044c';
       stationGenre.textContent = formatDate(rec.date) + ' | ' + formatDuration(rec.duration);
@@ -721,6 +731,7 @@ function playRecording(id) {
         stationIcon.classList.remove('playing');
         playerBar.style.background = '';
         playerBar.style.borderColor = '';
+        hideSeekTrack();
       });
 
       showToast('\u0412\u043e\u0441\u043f\u0440\u043e\u0438\u0437\u0432\u0435\u0434\u0435\u043d\u0438\u0435: ' + rec.station);
@@ -1012,3 +1023,73 @@ volumeSlider.addEventListener('input', function() {
 
 loadSettings();
 settingsVolume.value = volumeSlider.value;
+
+function showSeekTrack() {
+  seekTrack.style.display = 'flex';
+  updateSeekTrack();
+  seekTimer = setInterval(updateSeekTrack, 250);
+}
+
+function hideSeekTrack() {
+  seekTrack.style.display = 'none';
+  if (seekTimer) { clearInterval(seekTimer); seekTimer = null; }
+}
+
+function updateSeekTrack() {
+  if (!currentRecordingAudio) return;
+  var cur = currentRecordingAudio.currentTime || 0;
+  var dur = currentRecordingAudio.duration || 0;
+  if (!isFinite(dur) || dur <= 0) return;
+  var pct = (cur / dur) * 100;
+  seekBarFill.style.width = pct + '%';
+  seekBarThumb.style.left = pct + '%';
+  seekCurrent.textContent = formatDuration(cur);
+  seekDuration.textContent = formatDuration(dur);
+}
+
+seekBarWrap.addEventListener('click', function(e) {
+  if (!currentRecordingAudio) return;
+  var rect = seekBarWrap.getBoundingClientRect();
+  var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  var dur = currentRecordingAudio.duration || 0;
+  if (isFinite(dur) && dur > 0) {
+    currentRecordingAudio.currentTime = pct * dur;
+    updateSeekTrack();
+  }
+});
+
+var seekDragging = false;
+
+seekBarWrap.addEventListener('mousedown', function(e) {
+  seekDragging = true;
+  seekSeek(e);
+});
+document.addEventListener('mousemove', function(e) {
+  if (seekDragging) seekSeek(e);
+});
+document.addEventListener('mouseup', function() { seekDragging = false; });
+
+seekBarWrap.addEventListener('touchstart', function(e) {
+  seekDragging = true;
+  seekSeek(e.touches[0]);
+}, { passive: true });
+document.addEventListener('touchmove', function(e) {
+  if (seekDragging) seekSeek(e.touches[0]);
+});
+document.addEventListener('touchend', function() { seekDragging = false; });
+
+function seekSeek(e) {
+  if (!currentRecordingAudio) return;
+  var rect = seekBarWrap.getBoundingClientRect();
+  var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+  var dur = currentRecordingAudio.duration || 0;
+  if (isFinite(dur) && dur > 0) {
+    currentRecordingAudio.currentTime = pct * dur;
+    var ppct = pct * 100;
+    seekBarFill.style.width = ppct + '%';
+    seekBarThumb.style.left = ppct + '%';
+    seekCurrent.textContent = formatDuration(pct * dur);
+  }
+}
+
+audio.addEventListener('play', function() { hideSeekTrack(); });

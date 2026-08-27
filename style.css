@@ -983,3 +983,65 @@ header h1 {
 .toast.show {
   transform: translateX(-50%) translateY(0);
 }
+
+.seek-track {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.seek-time {
+  font-size: 11px;
+  font-family: 'Courier New', monospace;
+  color: var(--text-dim);
+  min-width: 36px;
+  text-align: center;
+}
+
+.seek-bar-wrap {
+  flex: 1;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  position: relative;
+}
+
+.seek-bar-wrap::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: var(--surface3);
+  border-radius: 2px;
+}
+
+.seek-bar-fill {
+  position: absolute;
+  left: 0;
+  height: 4px;
+  background: var(--neon);
+  border-radius: 2px;
+  box-shadow: 0 0 6px var(--neon-glow);
+  width: 0%;
+  pointer-events: none;
+}
+
+.seek-bar-thumb {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--neon);
+  box-shadow: 0 0 8px var(--neon-glow);
+  transform: translateX(-50%);
+  left: 0%;
+  pointer-events: none;
+  transition: transform 0.1s;
+}
+
+.seek-bar-wrap:active .seek-bar-thumb {
+  transform: translateX(-50%) scale(1.3);
+}
