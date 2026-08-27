@@ -745,8 +745,10 @@ function formatSize(bytes) {
 }
 
 function formatDuration(seconds) {
-  var m = Math.floor(seconds / 60).toString().padStart(2, '0');
-  var s = (seconds % 60).toString().padStart(2, '0');
+  if (!isFinite(seconds) || seconds < 0) seconds = 0;
+  var total = Math.floor(seconds);
+  var m = Math.floor(total / 60).toString().padStart(2, '0');
+  var s = (total % 60).toString().padStart(2, '0');
   return m + ':' + s;
 }
 
