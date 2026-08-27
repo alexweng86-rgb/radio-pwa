@@ -2,6 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
+  <base href="/radio-pwa/">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#0a0a0f">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -167,7 +168,7 @@
       caches.keys().then(function(keys) {
         keys.forEach(function(k) { caches.delete(k); });
       });
-      navigator.serviceWorker.register('sw.js?v=11').then(function(reg) {
+      navigator.serviceWorker.register('sw.js?v=12').then(function(reg) {
         reg.update();
         reg.addEventListener('updatefound', function() {
           var newSw = reg.installing;

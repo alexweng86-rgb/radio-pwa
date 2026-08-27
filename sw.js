@@ -1,4 +1,4 @@
-var CACHE_NAME = 'dnb-radio-v11-no-cache';
+var CACHE_NAME = 'dnb-radio-v12';
 
 self.addEventListener('install', function(e) {
   e.waitUntil(
@@ -27,18 +27,14 @@ self.addEventListener('activate', function(e) {
 self.addEventListener('fetch', function(e) {
   if (e.request.method !== 'GET') return;
   var url = new URL(e.request.url);
-  if (url.hostname.indexOf('github.io') === -1 &&
-      url.hostname.indexOf('githubusercontent') === -1 &&
-      url.hostname !== location.hostname) {
-    return;
-  }
-  if (url.pathname.indexOf('/radio-pwa/') !== 0) return;
+  var path = url.pathname;
+  if (path.indexOf('/radio-pwa/') !== 0) return;
   e.respondWith(
     fetch(e.request).catch(function() {
       if (e.request.mode === 'navigate') {
-        return caches.match('/radio-pwa/index.html');
+        return fetch('/radio-pwa/index.html');
       }
-      return new Response('', { status: 404, statusText: 'Not Found' });
+      return new Response('', { status: 404 });
     })
   );
 });

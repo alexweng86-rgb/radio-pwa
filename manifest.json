@@ -2,10 +2,11 @@
   "name": "DnB Radio",
   "short_name": "DnB Radio",
   "description": "Drum and Bass radio player with recording",
-  "start_url": "/",
+  "start_url": "/radio-pwa/",
+  "scope": "/radio-pwa/",
   "display": "standalone",
   "background_color": "#0f0f1a",
-  "theme_color": "#1a1a2e",
+  "theme_color": "#0a0a0f",
   "orientation": "portrait",
   "icons": [
     {
