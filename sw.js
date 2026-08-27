@@ -1,5 +1,5 @@
-var CACHE_NAME = 'dnb-radio-v8';
-var STATIC_CACHE = 'dnb-static-v8';
+var CACHE_NAME = 'dnb-radio-v9';
+var STATIC_CACHE = 'dnb-static-v9';
 var STATIC_ASSETS = [
   './',
   'index.html',
@@ -7,6 +7,17 @@ var STATIC_ASSETS = [
   'manifest.json',
   'icons/icon-192.svg',
   'icons/icon-512.svg'
+];
+
+var PROXY_DOMAINS = [
+  'radiorecord.hostingradio.ru',
+  'corsproxy.io',
+  'somafm.com',
+  'dnbfm.ru',
+  'radioboss.fm',
+  'bitflip.ee',
+  'edmdnb.com',
+  'the-radio.ru'
 ];
 
 self.addEventListener('install', function(e) {
@@ -31,6 +42,13 @@ self.addEventListener('activate', function(e) {
   );
 });
 
+function needsProxy(url) {
+  for (var i = 0; i < PROXY_DOMAINS.length; i++) {
+    if (url.indexOf(PROXY_DOMAINS[i]) >= 0) return true;
+  }
+  return false;
+}
+
 self.addEventListener('fetch', function(e) {
   var url = e.request.url;
   var origin = self.location.origin;
@@ -50,19 +68,22 @@ self.addEventListener('fetch', function(e) {
     return;
   }
 
-  e.respondWith(
-    fetch(e.request).then(function(resp) {
-      var headers = new Headers(resp.headers);
-      headers.set('Access-Control-Allow-Origin', '*');
-      headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-      headers.set('Access-Control-Allow-Headers', '*');
-      return new Response(resp.body, {
-        status: resp.status,
-        statusText: resp.statusText,
-        headers: headers
-      });
-    }).catch(function() {
-      return new Response('', { status: 502, statusText: 'Proxy Error' });
-    })
-  );
+  if (needsProxy(url)) {
+    e.respondWith(
+      fetch(e.request).then(function(resp) {
+        var headers = new Headers(resp.headers);
+        headers.set('Access-Control-Allow-Origin', '*');
+        headers.set('Access-Control-Allow-Methods', 'GET, HEAD');
+        headers.set('Access-Control-Allow-Headers', '*');
+        return new Response(resp.body, {
+          status: resp.status,
+          statusText: resp.statusText,
+          headers: headers
+        });
+      }).catch(function(err) {
+        return fetch(e.request);
+      })
+    );
+    return;
+  }
 });

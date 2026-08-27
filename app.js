@@ -71,7 +71,6 @@ function showToast(msg) {
 }
 
 audio.preload = 'auto';
-audio.crossOrigin = 'anonymous';
 audio.volume = volumeSlider.value / 100;
 
 audio.addEventListener('playing', function() {
@@ -466,29 +465,15 @@ function startRecording() {
   }
 
   try {
-    var stream = null;
-    var captureFn = audio.captureStream || audio.mozCaptureStream;
+    var ctx = ensureAudioCtx();
+    if (ctx.state === 'suspended') ctx.resume();
 
-    if (captureFn) {
-      stream = captureFn.call(audio);
-    }
-
-    if (!stream || !stream.getTracks || stream.getTracks().length === 0) {
-      var ctx = ensureAudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
-      recHiddenAudio = new Audio(audio.src);
-      recHiddenAudio.crossOrigin = 'anonymous';
-      recSourceNode = ctx.createMediaElementSource(recHiddenAudio);
-      recDestNode = ctx.createMediaStreamDestination();
-      recSourceNode.connect(recDestNode);
-      recHiddenAudio.play().catch(function() {});
-      stream = recDestNode.stream;
-    }
-
-    if (!stream || !stream.getTracks || stream.getTracks().length === 0) {
-      showToast('\u0417\u0430\u043f\u0438\u0441\u044c \u043d\u0435 \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442\u0441\u044f \u0432 \u044d\u0442\u043e\u043c \u0431\u0440\u0430\u0443\u0437\u0435\u0440\u0435');
-      return;
-    }
+    recHiddenAudio = new Audio(audio.src);
+    recHiddenAudio.crossOrigin = 'anonymous';
+    recSourceNode = ctx.createMediaElementSource(recHiddenAudio);
+    recDestNode = ctx.createMediaStreamDestination();
+    recSourceNode.connect(recDestNode);
+    recHiddenAudio.play().catch(function() {});
 
     var mimeType = '';
     if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
@@ -500,7 +485,7 @@ function startRecording() {
     } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
       mimeType = 'audio/ogg;codecs=opus';
     }
-    mediaRecorder = new MediaRecorder(stream, mimeType ? { mimeType: mimeType } : undefined);
+    mediaRecorder = new MediaRecorder(recDestNode.stream, mimeType ? { mimeType: mimeType } : undefined);
 
     audioChunks = [];
     mediaRecorder.ondataavailable = function(e) {
