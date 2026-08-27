@@ -161,10 +161,14 @@
     </div>
   </div>
 
-  <script src="app.js?v=19"></script>
+  <script src="app.js?v=20"></script>
   <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('sw.js').then(function(reg) {
+      caches.keys().then(function(keys) {
+        keys.forEach(function(k) { caches.delete(k); });
+      });
+      navigator.serviceWorker.register('sw.js?v=11').then(function(reg) {
+        reg.update();
         reg.addEventListener('updatefound', function() {
           var newSw = reg.installing;
           if (newSw) {
