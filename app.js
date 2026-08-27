@@ -842,12 +842,15 @@ function renderRecordings() {
           if (currentRecordingId !== recId) return;
           var rect = wrap.getBoundingClientRect();
           var pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-          var dur = currentRecordingAudio.duration || 0;
+          var dur = currentRecordingAudio.duration;
+          fill.style.width = (pct * 100) + '%';
+          thumb.style.left = (pct * 100) + '%';
           if (isFinite(dur) && dur > 0) {
             currentRecordingAudio.currentTime = pct * dur;
-            fill.style.width = (pct * 100) + '%';
-            thumb.style.left = (pct * 100) + '%';
             if (times[0]) times[0].textContent = formatDuration(pct * dur);
+          } else {
+            pendingSeekPct = pct;
+            if (times[0]) times[0].textContent = formatDuration(currentRecordingAudio.currentTime || 0);
           }
         }
 
@@ -1080,14 +1083,19 @@ volumeSlider.addEventListener('input', function() {
 loadSettings();
 settingsVolume.value = volumeSlider.value;
 
+var lastSeekSync = 0;
+var pendingSeekPct = -1;
+
 function showSeekTrack() {
   if (seekTimer) { cancelAnimationFrame(seekTimer); seekTimer = null; }
   lastSeekSync = 0;
+  pendingSeekPct = -1;
   seekRafLoop();
 }
 
 function hideSeekTrack() {
   if (seekTimer) { cancelAnimationFrame(seekTimer); seekTimer = null; }
+  pendingSeekPct = -1;
   if (currentRecordingId !== null) {
     var card = recordingsList.querySelector('.recording-card[data-id="' + currentRecordingId + '"]');
     if (card) {
@@ -1101,8 +1109,6 @@ function hideSeekTrack() {
   }
 }
 
-var lastSeekSync = 0;
-
 function seekRafLoop() {
   seekTimer = requestAnimationFrame(seekRafLoop);
   if (!currentRecordingAudio || currentRecordingId === null) return;
@@ -1112,20 +1118,23 @@ function seekRafLoop() {
   var thumb = card.querySelector('.seek-bar-thumb');
   var times = card.querySelectorAll('.seek-time');
   if (!fill) return;
-  var cur = currentRecordingAudio.currentTime;
+
+  var cur = currentRecordingAudio.currentTime || 0;
   var dur = currentRecordingAudio.duration;
-  if (cur === undefined || cur === null) return;
-  if (!isFinite(dur) || dur <= 0) {
-    if (times[0]) times[0].textContent = formatDuration(cur || 0);
-    return;
+
+  if (pendingSeekPct >= 0 && isFinite(dur) && dur > 0) {
+    currentRecordingAudio.currentTime = pendingSeekPct * dur;
+    pendingSeekPct = -1;
   }
-  var pct = (cur / dur) * 100;
+
+  var pct = (isFinite(dur) && dur > 0) ? (cur / dur) * 100 : 0;
   fill.style.width = pct + '%';
   thumb.style.left = pct + '%';
+
   var now = Date.now();
-  if (now - lastSeekSync > 400) {
+  if (now - lastSeekSync > 250) {
     lastSeekSync = now;
     if (times[0]) times[0].textContent = formatDuration(cur);
-    if (times[1]) times[1].textContent = formatDuration(dur);
+    if (isFinite(dur) && dur > 0 && times[1]) times[1].textContent = formatDuration(dur);
   }
 }
