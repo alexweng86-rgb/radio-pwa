@@ -13,15 +13,30 @@
   <title>DnB Radio</title>
   <link rel="manifest" href="manifest.json">
   <link rel="icon" href="icons/icon-192.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icons/icon-192.svg">
+  <link rel="icon" href="icons/icon-192.png" type="image/png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div id="app">
     <header>
       <div class="header-left">
-        <svg class="logo-icon" viewBox="0 0 24 24" fill="currentColor" width="26" height="26">
-          <path d="M12 2C8.13 2 5 5.13 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.87-3.13-7-7-7zm0 2c2.76 0 5 2.24 5 5 0 1.64-.79 3.1-2 4.05V16H8v-2.95C6.79 12.1 6 10.64 6 9c0-2.76 2.24-5 5-5zm-1 7.5c-.83 0-1.5-.67-1.5-1.5S10.17 8.5 11 8.5s1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm2 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM9 20v1c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9z"/>
+        <svg class="logo-icon" viewBox="0 0 24 24" width="26" height="26">
+          <defs>
+            <linearGradient id="lp" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#c084fc"/>
+              <stop offset="100%" stop-color="#7c3aed"/>
+            </linearGradient>
+          </defs>
+          <circle cx="12" cy="10.5" r="7.5" fill="#1a1a2e" stroke="url(#lp)" stroke-width="1"/>
+          <circle cx="12" cy="10.5" r="2" fill="url(#lp)"/>
+          <circle cx="12" cy="10.5" r="0.6" fill="#0a0a12"/>
+          <circle cx="12" cy="10.5" r="5.5" fill="none" stroke="#c084fc" stroke-width="0.2" opacity="0.4"/>
+          <circle cx="12" cy="10.5" r="4" fill="none" stroke="#a855f7" stroke-width="0.2" opacity="0.3"/>
+          <line x1="19" y1="6" x2="14.5" y2="8.5" stroke="#c084fc" stroke-width="0.7" opacity="0.8"/>
+          <circle cx="19" cy="6" r="0.8" fill="#7c3aed"/>
+          <circle cx="14.5" cy="8.5" r="0.4" fill="#c084fc"/>
+          <text x="12" y="22" text-anchor="middle" font-family="Impact, Arial Black, sans-serif" font-size="4.5" fill="url(#lp)" letter-spacing="0.3">DnB</text>
         </svg>
         <h1>DnB Radio</h1>
       </div>

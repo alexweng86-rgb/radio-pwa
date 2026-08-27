@@ -1,5 +1,57 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
-  <rect width="512" height="512" rx="64" fill="#0a0a0f"/>
-  <rect width="512" height="512" rx="64" fill="none" stroke="#39ff14" stroke-width="4" opacity="0.3"/>
-  <path d="M256 70C188 70 133 125 133 193c0 50 25 94 62 122v38c0 12 10 22 22 22h54c12 0 22-10 22-22v-38c37-28 62-72 62-122 0-68-55-123-123-123zm0 44c39 0 70 31 70 70 0 33-16 63-42 83v24h-56v-24c-26-20-42-50-42-83 0-39 31-70 70-70zm-22 146c-9 0-16-7-16-16s7-16 16-16 16 7 16 16-7 16-16 16zm44 0c-9 0-16-7-16-16s7-16 16-16 16 7 16 16-7 16-16 16zM214 410v12c0 10 8 18 18 18h48c10 0 18-8 18-18v-12H214z" fill="#39ff14"/>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#2d1054"/>
+      <stop offset="100%" stop-color="#0a0a12"/>
+    </radialGradient>
+    <linearGradient id="vinyl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="liquid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#7c3aed" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.5"/>
+    </linearGradient>
+    <filter id="blur1">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="64" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="64" fill="none" stroke="#7c3aed" stroke-width="3" opacity="0.4"/>
+  <!-- Liquid splash blobs -->
+  <ellipse cx="256" cy="220" rx="160" ry="120" fill="url(#liquid)" opacity="0.3" filter="url(#blur1)"/>
+  <ellipse cx="220" cy="200" rx="100" ry="80" fill="#a855f7" opacity="0.08" filter="url(#blur1)"/>
+  <ellipse cx="300" cy="250" rx="90" ry="70" fill="#7c3aed" opacity="0.08" filter="url(#blur1)"/>
+  <!-- Vinyl disc -->
+  <circle cx="256" cy="210" r="120" fill="#12121e" stroke="url(#vinyl)" stroke-width="4"/>
+  <!-- Outer ring glow -->
+  <circle cx="256" cy="210" r="118" fill="none" stroke="#c084fc" stroke-width="1" opacity="0.3"/>
+  <!-- Grooves -->
+  <circle cx="256" cy="210" r="105" fill="none" stroke="#c084fc" stroke-width="0.7" opacity="0.2"/>
+  <circle cx="256" cy="210" r="95" fill="none" stroke="#a855f7" stroke-width="0.6" opacity="0.18"/>
+  <circle cx="256" cy="210" r="85" fill="none" stroke="#7c3aed" stroke-width="0.6" opacity="0.15"/>
+  <circle cx="256" cy="210" r="75" fill="none" stroke="#c084fc" stroke-width="0.5" opacity="0.15"/>
+  <circle cx="256" cy="210" r="65" fill="none" stroke="#a855f7" stroke-width="0.5" opacity="0.12"/>
+  <circle cx="256" cy="210" r="55" fill="none" stroke="#7c3aed" stroke-width="0.5" opacity="0.12"/>
+  <circle cx="256" cy="210" r="45" fill="none" stroke="#c084fc" stroke-width="0.5" opacity="0.1"/>
+  <circle cx="256" cy="210" r="35" fill="none" stroke="#a855f7" stroke-width="0.5" opacity="0.1"/>
+  <!-- Label area -->
+  <circle cx="256" cy="210" r="25" fill="url(#glow)" opacity="0.85"/>
+  <circle cx="256" cy="210" r="5" fill="#0a0a12"/>
+  <!-- Tonearm -->
+  <line x1="380" y1="120" x2="295" y2="180" stroke="#c084fc" stroke-width="3.5" stroke-linecap="round" opacity="0.8"/>
+  <line x1="380" y1="120" x2="400" y2="110" stroke="#a855f7" stroke-width="4.5" stroke-linecap="round"/>
+  <circle cx="380" cy="120" r="6" fill="#7c3aed" stroke="#c084fc" stroke-width="1"/>
+  <circle cx="295" cy="180" r="3.5" fill="#c084fc" opacity="0.9"/>
+  <!-- Text -->
+  <text x="256" y="400" text-anchor="middle" font-family="Impact, Arial Black, sans-serif" font-size="72" font-weight="900" fill="url(#vinyl)" letter-spacing="6">DnB</text>
+  <text x="256" y="435" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="400" fill="#c084fc" letter-spacing="8" opacity="0.7">RADIO</text>
+  <!-- Neon underline -->
+  <rect x="150" y="450" width="212" height="2" rx="1" fill="url(#vinyl)" opacity="0.5"/>
 </svg>

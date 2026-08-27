@@ -1,5 +1,48 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
-  <rect width="192" height="192" rx="32" fill="#0a0a0f"/>
-  <rect width="192" height="192" rx="32" fill="none" stroke="#39ff14" stroke-width="3" opacity="0.3"/>
-  <path d="M96 30C72 30 53 49 53 73c0 18 9 34 22 44v13c0 4 3 7 7 7h20c4 0 7-3 7-7V117c13-10 22-26 22-44 0-24-19-43-43-43zm0 16c14 0 25 11 25 25 0 12-6 23-15 30v8H86v-8c-9-7-15-18-15-30 0-14 11-25 25-25zm-8 52c-3 0-5-2-5-5s2-5 5-5 5 2 5 5-2 5-5 5zm16 0c-3 0-5-2-5-5s2-5 5-5 5 2 5 5-2 5-5 5zM79 150v4c0 3 2 5 5 5h24c3 0 5-2 5-5v-4H79z" fill="#39ff14"/>
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#2d1054"/>
+      <stop offset="100%" stop-color="#0a0a12"/>
+    </radialGradient>
+    <linearGradient id="vinyl" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7"/>
+      <stop offset="50%" stop-color="#7c3aed"/>
+      <stop offset="100%" stop-color="#c084fc"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <linearGradient id="liquid" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#a855f7" stop-opacity="0.6"/>
+      <stop offset="50%" stop-color="#7c3aed" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#c084fc" stop-opacity="0.5"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="32" fill="url(#bg)"/>
+  <rect width="192" height="192" rx="32" fill="none" stroke="#7c3aed" stroke-width="2" opacity="0.4"/>
+  <!-- Liquid splash shapes -->
+  <ellipse cx="96" cy="88" rx="58" ry="44" fill="url(#liquid)" opacity="0.5"/>
+  <path d="M38 88 Q38 54 70 40 Q96 30 122 40 Q154 54 154 88 Q154 120 122 132 Q96 140 70 132 Q38 120 38 88Z" fill="none" stroke="url(#vinyl)" stroke-width="2" opacity="0.4"/>
+  <!-- Vinyl disc -->
+  <circle cx="96" cy="82" r="38" fill="#1a1a2e" stroke="url(#vinyl)" stroke-width="2.5"/>
+  <circle cx="96" cy="82" r="30" fill="none" stroke="#7c3aed" stroke-width="0.7" opacity="0.5"/>
+  <circle cx="96" cy="82" r="22" fill="none" stroke="#a855f7" stroke-width="0.5" opacity="0.3"/>
+  <circle cx="96" cy="82" r="14" fill="none" stroke="#c084fc" stroke-width="0.5" opacity="0.3"/>
+  <!-- Grooves -->
+  <circle cx="96" cy="82" r="34" fill="none" stroke="#c084fc" stroke-width="0.4" opacity="0.25"/>
+  <circle cx="96" cy="82" r="26" fill="none" stroke="#a855f7" stroke-width="0.4" opacity="0.2"/>
+  <circle cx="96" cy="82" r="18" fill="none" stroke="#7c3aed" stroke-width="0.4" opacity="0.2"/>
+  <!-- Center label -->
+  <circle cx="96" cy="82" r="8" fill="url(#glow)" opacity="0.9"/>
+  <circle cx="96" cy="82" r="2" fill="#0a0a12"/>
+  <!-- Tonearm -->
+  <line x1="140" y1="52" x2="112" y2="72" stroke="#c084fc" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="140" y1="52" x2="148" y2="48" stroke="#a855f7" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="140" cy="52" r="3" fill="#7c3aed"/>
+  <circle cx="112" cy="72" r="2" fill="#c084fc" opacity="0.9"/>
+  <!-- Text DnB -->
+  <text x="96" y="155" text-anchor="middle" font-family="Impact, Arial Black, sans-serif" font-size="26" font-weight="900" fill="url(#vinyl)" letter-spacing="3">DnB</text>
+  <!-- Subtle neon underline -->
+  <rect x="56" y="160" width="80" height="1.5" rx="1" fill="#a855f7" opacity="0.6"/>
 </svg>
